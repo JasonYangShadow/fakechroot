@@ -21,23 +21,62 @@
 #include <config.h>
 
 #include "libfakechroot.h"
-
+#include "unionfs.h"
+#include "getcwd_real.h"
+#include "dedotdot.h"
 
 wrapper(symlink, int, (const char * oldpath, const char * newpath))
 {
-    char tmp[FAKECHROOT_PATH_MAX];
-    debug("symlink(\"%s\", \"%s\")", oldpath, newpath);
-    expand_chroot_rel_path(oldpath);
-    strcpy(tmp, oldpath);
-    oldpath = tmp;
-    expand_chroot_path(newpath);
+    //char tmp[FAKECHROOT_PATH_MAX];
+    //expand_chroot_rel_path(oldpath);
+    //strcpy(tmp, oldpath);
+    //oldpath = tmp;
+    char old_resolved[MAX_PATH];
+    if(*oldpath == '/'){
+        expand_chroot_path(oldpath);
+        char rel_path[MAX_PATH];
+        char layer_path[MAX_PATH];
+        int ret = get_relative_path_layer(oldpath, rel_path, layer_path);
+        if(ret == 0){
+            char abs_oldpath[MAX_PATH];
+            sprintf(abs_oldpath,"/%s", rel_path);
+            if(!lxstat(abs_oldpath)){
+                strcpy(old_resolved, abs_oldpath);
+            }else{
+                strcpy(old_resolved, oldpath);
+            }
+        }else{
+            if(!lxstat(oldpath)){
+                strcpy(old_resolved, oldpath);
+            }else{
+                const char * container_root = getenv("ContainerRoot");
+                sprintf(old_resolved, "%s%s", container_root, oldpath);
+            }
+        }
+    }else{
+        strcpy(old_resolved, oldpath);
+    }
+    dedotdot(old_resolved);
+
+    char new_resolved[MAX_PATH];
+    if(*newpath == '/'){
+        expand_chroot_path(newpath);
+        strcpy(new_resolved, newpath);
+    }else{
+        char cwd[MAX_PATH];
+        getcwd_real(cwd,MAX_PATH);
+        sprintf(new_resolved, "%s/%s", cwd, newpath);
+    }
+    dedotdot(new_resolved);
+
+    debug("symlink oldpath: %s, newpath: %s", old_resolved, new_resolved);
 
     char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, oldpath, newpath);
+    bool r = rt_mem_check(2, rt_paths, old_resolved, new_resolved);
     if (r && rt_paths){
-      return nextcall(symlink)(rt_paths[0], rt_paths[1]);
+      return WRAPPER_FUFS(symlink, symlink, rt_paths[0], rt_paths[1])
     }else if(r && !rt_paths){
-      return nextcall(symlink)(oldpath, newpath);
+      return WRAPPER_FUFS(symlink, symlink, old_resolved, new_resolved)
     }else{
       errno = EACCES;
       return -1;

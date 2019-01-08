@@ -8,8 +8,7 @@
     Copyright (c) 2006, 2007 Lionel Tricon <lionel.tricon@free.fr>
 
     This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Lesser General Public
-    License as published by the Free Software Foundation; either
+    modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either
     version 2.1 of the License, or (at your option) any later version.
 
     This library is distributed in the hope that it will be useful,
@@ -26,31 +25,34 @@
 
 #define _GNU_SOURCE
 
-#include <stdarg.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <pwd.h>
 #include <dlfcn.h>
+#include <pwd.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "setenv.h"
-#include "libfakechroot.h"
 #include "getcwd_real.h"
+#include "libfakechroot.h"
+#include "log.h"
+#include "memcached_client.h"
+#include "setenv.h"
 #include "strchrnul.h"
+#include <errno.h>
+#include <libgen.h>
 
 #define EXCLUDE_LIST_SIZE 100
 
-
 /* Useful to exclude a list of directories or files */
-static char *exclude_list[EXCLUDE_LIST_SIZE];
+static char* exclude_list[EXCLUDE_LIST_SIZE];
 static int exclude_length[EXCLUDE_LIST_SIZE];
 static int list_max = 0;
 static int first = 0;
 
-
 /* List of environment variables to preserve on clearenv() */
-char *preserve_env_list[] = {
+char* preserve_env_list[] = {
     "FAKECHROOT_BASE",
     "FAKECHROOT_CMD_SUBST",
     "FAKECHROOT_DEBUG",
@@ -67,8 +69,7 @@ char *preserve_env_list[] = {
 };
 const int preserve_env_list_count = sizeof preserve_env_list / sizeof preserve_env_list[0];
 
-
-LOCAL int fakechroot_debug (const char *fmt, ...)
+LOCAL int fakechroot_debug(const char* fmt, ...)
 {
     int ret;
     char newfmt[2048];
@@ -87,23 +88,18 @@ LOCAL int fakechroot_debug (const char *fmt, ...)
     return ret;
 }
 
-
 #include "getcwd.h"
 
-
 /* Bootstrap the library */
-void fakechroot_init (void) CONSTRUCTOR;
-void fakechroot_init (void)
+void fakechroot_init(void) CONSTRUCTOR;
+void fakechroot_init(void)
 {
-    char *detect = getenv("FAKECHROOT_DETECT");
-
+    char* detect = getenv("FAKECHROOT_DETECT");
 
     if (detect) {
         /* printf causes coredump on FreeBSD */
-        if (write(STDOUT_FILENO, PACKAGE, sizeof(PACKAGE)-1) &&
-            write(STDOUT_FILENO, " ", 1) &&
-            write(STDOUT_FILENO, VERSION, sizeof(VERSION)-1) &&
-            write(STDOUT_FILENO, "\n", 1)) { /* -Wunused-result */ }
+        if (write(STDOUT_FILENO, PACKAGE, sizeof(PACKAGE) - 1) && write(STDOUT_FILENO, " ", 1) && write(STDOUT_FILENO, VERSION, sizeof(VERSION) - 1) && write(STDOUT_FILENO, "\n", 1)) { /* -Wunused-result */
+        }
         _Exit(atoi(detect));
     }
 
@@ -113,22 +109,24 @@ void fakechroot_init (void)
     debug("FAKECHROOT_CMD_ORIG=\"%s\"", getenv("FAKECHROOT_CMD_ORIG"));
 
     if (!first) {
-        char *exclude_path = getenv("FAKECHROOT_EXCLUDE_PATH");
+        char* exclude_path = getenv("FAKECHROOT_EXCLUDE_PATH");
 
         first = 1;
 
         /* We get a list of directories or files */
         if (exclude_path) {
             int i;
-            for (i = 0; list_max < EXCLUDE_LIST_SIZE; ) {
+            for (i = 0; list_max < EXCLUDE_LIST_SIZE;) {
                 int j;
-                for (j = i; exclude_path[j] != ':' && exclude_path[j] != '\0'; j++);
+                for (j = i; exclude_path[j] != ':' && exclude_path[j] != '\0'; j++)
+                    ;
                 exclude_list[list_max] = malloc(j - i + 2);
                 memset(exclude_list[list_max], '\0', j - i + 2);
                 strncpy(exclude_list[list_max], &(exclude_path[i]), j - i);
                 exclude_length[list_max] = strlen(exclude_list[list_max]);
                 list_max++;
-                if (exclude_path[j] != ':') break;
+                if (exclude_path[j] != ':')
+                    break;
                 i = j + 1;
             }
         }
@@ -138,24 +136,24 @@ void fakechroot_init (void)
     }
 }
 
-
 /* Lazily load function */
-LOCAL fakechroot_wrapperfn_t fakechroot_loadfunc (struct fakechroot_wrapper * w)
+LOCAL fakechroot_wrapperfn_t fakechroot_loadfunc(struct fakechroot_wrapper* w)
 {
-    char *msg;
-    if (!(w->nextfunc = dlsym(RTLD_NEXT, w->name))) {;
+    char* msg;
+    if (!(w->nextfunc = dlsym(RTLD_NEXT, w->name))) {
+        ;
         msg = dlerror();
+        debug("fakechroot_loadfunc %s",w->name);
         fprintf(stderr, "%s: %s: %s\n", PACKAGE, w->name, msg != NULL ? msg : "unresolved symbol");
         exit(EXIT_FAILURE);
     }
     return w->nextfunc;
 }
 
-
 /* Check if path is on exclude list */
-LOCAL int fakechroot_localdir (const char * p_path)
+LOCAL int fakechroot_localdir(const char* p_path)
 {
-    char *v_path = (char *)p_path;
+    char* v_path = (char*)p_path;
     char cwd_path[FAKECHROOT_PATH_MAX];
 
     if (!p_path)
@@ -177,16 +175,15 @@ LOCAL int fakechroot_localdir (const char * p_path)
         int i;
 
         for (i = 0; i < list_max; i++) {
-            if (exclude_length[i] > len ||
-                    v_path[exclude_length[i] - 1] != (exclude_list[i])[exclude_length[i] - 1] ||
-                    strncmp(exclude_list[i], v_path, exclude_length[i]) != 0) continue;
-            if (exclude_length[i] == len || v_path[exclude_length[i]] == '/') return 1;
+            if (exclude_length[i] > len || v_path[exclude_length[i] - 1] != (exclude_list[i])[exclude_length[i] - 1] || strncmp(exclude_list[i], v_path, exclude_length[i]) != 0)
+                continue;
+            if (exclude_length[i] == len || v_path[exclude_length[i]] == '/')
+                return 1;
         }
     }
 
     return 0;
 }
-
 
 /*
  * Parse the FAKECHROOT_CMD_SUBST environment variable (the first
@@ -195,10 +192,10 @@ LOCAL int fakechroot_localdir (const char * p_path)
  *
  * FAKECHROOT_CMD_SUBST=cmd=subst:cmd=subst:...
  */
-LOCAL int fakechroot_try_cmd_subst (char * env, const char * filename, char * cmd_subst)
+LOCAL int fakechroot_try_cmd_subst(char* env, const char* filename, char* cmd_subst)
 {
     int len, len2;
-    char *p;
+    char* p;
 
     if (env == NULL || filename == NULL)
         return 0;
@@ -212,10 +209,10 @@ LOCAL int fakechroot_try_cmd_subst (char * env, const char * filename, char * cm
         p = strchrnul(env, ':');
 
         if (strncmp(env, filename, len) == 0 && env[len] == '=') {
-            len2 = p - &env[len+1];
+            len2 = p - &env[len + 1];
             if (len2 >= FAKECHROOT_PATH_MAX)
                 len2 = FAKECHROOT_PATH_MAX - 1;
-            strncpy(cmd_subst, &env[len+1], len2);
+            strncpy(cmd_subst, &env[len + 1], len2);
             cmd_subst[len2] = '\0';
             return 1;
         }
@@ -226,3 +223,61 @@ LOCAL int fakechroot_try_cmd_subst (char * env, const char * filename, char * cm
     return 0;
 }
 
+int get_all_parents(const char* path, char** parents, int* lengths, int* n)
+{
+    char resolved[PATH_MAX_LENGTH];
+    if (*path != '/') {
+        rel2abs(path, resolved);
+    } else {
+        strcpy(resolved, path);
+    }
+    strcpy(parents[0], resolved);
+    *n = 1;
+    while (strcmp(resolved, "/") != 0) {
+        dirname(resolved);
+        strcpy(parents[*n], resolved);
+        lengths[*n] = strlen(resolved);
+        (*n)++;
+    }
+    return 0;
+}
+
+bool b_parent_delete(int n, ...)
+{
+    va_list args;
+    va_start(args, n);
+    char* paths[n];
+    for (int i = 0; i < n; i++) {
+        paths[i] = va_arg(args, char*);
+    }
+    va_end(args);
+
+    for (int i = 0; i < n; i++) {
+        int num;
+        char** parents = (char**)malloc(sizeof(char*) * PATH_MAX_PARENT);
+        for (int i = 0; i < PATH_MAX_PARENT; i++) {
+            parents[i] = (char*)malloc(sizeof(char) * PATH_MAX_LENGTH);
+        }
+        int* lengths = (int*)malloc(sizeof(int) * PATH_MAX_PARENT);
+
+        get_all_parents(paths[i], parents, lengths, &num);
+
+        //combination of paths
+        for (int i = 0; i < num; i++) {
+            log_debug("parent list:%s", parents[i]);
+        }
+
+        bool b_exist = existKeys((const char **)parents, (const size_t *)lengths, num);
+        log_debug("check if any of parents are in memcached: %d", b_exist);
+        for (int i = 0; i < PATH_MAX_PARENT; i++) {
+            free(parents[i]);
+        }
+        free(parents);
+        free(lengths);
+
+        if (b_exist) {
+            return false;
+        }
+    }
+    return true;
+}

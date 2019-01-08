@@ -20,20 +20,18 @@
 
 #include <config.h>
 
-#ifdef HAVE_FREOPEN64
-
-#define _LARGEFILE64_SOURCE
-#include <stdio.h>
+#include <dirent.h>
 #include "libfakechroot.h"
 #include "unionfs.h"
 
-wrapper(freopen64, FILE *, (const char *path, const char *mode, FILE *stream))
+extern struct dirent_obj * darr;
+wrapper(readdir, struct dirent *, (DIR * dirp))
 {
-    debug("freopen64(\"%s\", \"%s\", &stream)", path, mode);
-    expand_chroot_path(path);
-    return WRAPPER_FUFS(fopen,freopen64,path,mode,stream)
+    //debug("readdir darr %s",darr);
+    if(darr != NULL){
+        struct dirent * entry = popItemFromHead(&darr);
+        return entry;
+    }else{
+        return nextcall(readdir)(dirp);
+    }
 }
-
-#else
-typedef int empty_translation_unit;
-#endif

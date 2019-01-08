@@ -1,6 +1,6 @@
 /*
     libfakechroot -- fake chroot environment
-    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
+    Copyright (c) 2013 Piotr Roszatycki <dexter@debian.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -18,22 +18,16 @@
 */
 
 
+#ifndef __READDIR_H
+#define __READDIR_H
+
 #include <config.h>
 
-#ifdef HAVE_FREOPEN64
-
-#define _LARGEFILE64_SOURCE
-#include <stdio.h>
+#include <dirent.h>
 #include "libfakechroot.h"
-#include "unionfs.h"
 
-wrapper(freopen64, FILE *, (const char *path, const char *mode, FILE *stream))
-{
-    debug("freopen64(\"%s\", \"%s\", &stream)", path, mode);
-    expand_chroot_path(path);
-    return WRAPPER_FUFS(fopen,freopen64,path,mode,stream)
-}
+wrapper_proto(readdir, struct dirent *, (DIR *));
 
-#else
-typedef int empty_translation_unit;
+#endif
+
 #endif

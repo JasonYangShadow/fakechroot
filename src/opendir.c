@@ -17,20 +17,37 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
 */
 
-
 #include <config.h>
 
 #if !defined(OPENDIR_CALLS___OPEN) && !defined(OPENDIR_CALLS___OPENDIR2)
 
-#include <dirent.h>
 #include "libfakechroot.h"
+#include "unionfs.h"
+#include <dirent.h>
 
-
-wrapper(opendir, DIR *, (const char * name))
+wrapper(opendir, DIR*, (const char* name))
 {
-    debug("opendir(\"%s\")", name);
     expand_chroot_path(name);
-    return nextcall(opendir)(name);
+    debug("opendir(\"%s\")", name);
+    if(!xstat(name) || !is_file_type(name,TYPE_DIR)){
+        errno = ENOENT;
+        return NULL;
+    }
+    size_t num;
+    struct dirent_obj* tmp = NULL;
+    DIR* dirp = getDirents(name, &tmp, &num);
+    if(pathExcluded(name)){
+        darr = tmp;
+        return dirp;
+    }
+    darr = WRAPPER_FUFS(opendir,opendir,name)
+   /**
+    while(darr){
+        debug("dirents item: %s", darr->abs_path);
+        darr = darr->next;
+    }
+    **/
+    return dirp;
 }
 
 #else

@@ -169,13 +169,20 @@ libfakechroot_la_SOURCES = \
     utime.c \
     utimensat.c \
     utimes.c \
-		hashmap.c \
-		memcached_client.c \
-		hmappriv.c \
-		ipc_rcv.c \
-		ipc_snd.c \
-		log.c \
-		msg.c
+	hashmap.h \
+	hashmap.c \
+	memcached_client.c \
+	memcached_client.h \
+	hmappriv.c \
+	hmappriv.h \
+	log.c \
+	log.h \
+	msg.h \
+	msg.c \
+	readdir.h \
+	readdir.c \
+	unionfs.h \
+	unionfs.c
 libfakechroot_la_LDFLAGS = -avoid-version
 
 AM_CFLAGS = $(EXTRA_CFLAGS)
