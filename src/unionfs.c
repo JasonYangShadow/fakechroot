@@ -839,7 +839,7 @@ int recurMkdir(const char *path){
 
     if(!xstat(dname)){
         INITIAL_SYS(mkdir)
-            log_debug("start creating dir %s", dname);
+        log_debug("start creating dir %s", dname);
         int ret = real_mkdir(dname, FOLDER_PERM);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", dname, strerror(errno));
@@ -1179,11 +1179,7 @@ FILE* fufs_fopen_impl(const char * function, ...){
 end:
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            int ret = recurMkdir(path);
-        if(ret != 0){
-            log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
-            return NULL;
-        }
+        recurMkdir(path);
     }
 
     if(strcmp(function,"fopen") == 0){
