@@ -1593,9 +1593,9 @@ int fufs_symlink_impl(const char *function, ...){
     }
 
     INITIAL_SYS(symlinkat)
-    INITIAL_SYS(symlink)
+        INITIAL_SYS(symlink)
 
-    char dir[MAX_PATH];
+        char dir[MAX_PATH];
     strcpy(dir, resolved);
     dirname(dir);
     //parent folder does not exist
@@ -1717,17 +1717,25 @@ int fufs_rmdir_impl(const char* function, ...){
     }
 
     INITIAL_SYS(mkdir)
-        INITIAL_SYS(creat)
+    INITIAL_SYS(creat)
 
-        const char * container_root = getenv("ContainerRoot");
+    const char * container_root = getenv("ContainerRoot");
 
     char * bname = basename(rel_path);
     char dname[MAX_PATH];
     strcpy(dname, rel_path);
     dirname(dname);
     if(strcmp(layer_path,container_root) == 0){
+        //two cases
+        //1. folder does not exist in another other layers, then delete it directly
+        //2. folder exists in other layers, create wh and check all content inside is wh files, clear them
         INITIAL_SYS(rmdir)
-            char wh[MAX_PATH];
+        char layers_resolved[MAX_PATH];
+        if(!findFileInLayersSkip(path, layers_resolved, 1)){
+            goto end;
+        }
+
+        char wh[MAX_PATH];
         sprintf(wh,"%s/%s/.wh.%s",container_root,dname,bname);
 
         char wh_dname[MAX_PATH];
@@ -1771,8 +1779,11 @@ int fufs_rmdir_impl(const char* function, ...){
                 }
             }
         }
+
+end:
         return RETURN_SYS(rmdir,(path))
     }else{
+        //in other layers
         char new_path[MAX_PATH];
         sprintf(new_path,"%s/%s", container_root,rel_path);
         int ret = recurMkdirMode(new_path,FOLDER_PERM);
