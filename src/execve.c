@@ -181,7 +181,7 @@ skip2: ;
     //when the target does not exist
     if ((file = nextcall(open)(filename, O_RDONLY)) == -1) {
         //get exposed exe
-        const char * exe = getenv("ContainerJailedEXE");
+        const char * exe = getenv("EXCLUDE_EXE");
         if(exe){
             char exe_dup[FAKECHROOT_PATH_MAX];
             strcpy(exe_dup, exe);

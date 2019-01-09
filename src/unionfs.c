@@ -1685,9 +1685,21 @@ int fufs_chmod_impl(const char* function, ...){
     if(strcmp(layer_path,container_root) == 0){
         strcpy(resolved, path);
     }else{
-        if(!copyFile2RW(path, resolved)){
-            log_fatal("copy from %s to %s encounters error", path, resolved);
-            return -1;
+        if(is_file_type(path, TYPE_FILE) || is_file_type(path, TYPE_LINK)){
+            if(!copyFile2RW(path, resolved)){
+                log_fatal("copy from %s to %s encounters error", path, resolved);
+                return -1;
+            }
+        }
+
+        if(is_file_type(path, TYPE_DIR)){
+            const char * container_root = getenv("ContainerRoot");
+            char newpath[MAX_PATH];
+            sprintf(newpath,"%s/%s", container_root, rel_path);
+            if(!xstat(newpath)){
+                recurMkdirMode(newpath, FOLDER_PERM);
+            }
+            strcpy(resolved, newpath);
         }
     }
 
@@ -1717,9 +1729,9 @@ int fufs_rmdir_impl(const char* function, ...){
     }
 
     INITIAL_SYS(mkdir)
-    INITIAL_SYS(creat)
+        INITIAL_SYS(creat)
 
-    const char * container_root = getenv("ContainerRoot");
+        const char * container_root = getenv("ContainerRoot");
 
     char * bname = basename(rel_path);
     char dname[MAX_PATH];
@@ -1730,7 +1742,7 @@ int fufs_rmdir_impl(const char* function, ...){
         //1. folder does not exist in another other layers, then delete it directly
         //2. folder exists in other layers, create wh and check all content inside is wh files, clear them
         INITIAL_SYS(rmdir)
-        char layers_resolved[MAX_PATH];
+            char layers_resolved[MAX_PATH];
         if(!findFileInLayersSkip(path, layers_resolved, 1)){
             goto end;
         }
