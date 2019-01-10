@@ -840,11 +840,7 @@ int recurMkdir(const char *path){
     if(!xstat(dname)){
         INITIAL_SYS(mkdir)
         log_debug("start creating dir %s", dname);
-        int ret = real_mkdir(dname, FOLDER_PERM);
-        if(ret != 0){
-            log_fatal("creating dirs %s encounters failure with error %s", dname, strerror(errno));
-            return -1;
-        }
+        real_mkdir(dname, FOLDER_PERM);
     }
     return 0;
 }
