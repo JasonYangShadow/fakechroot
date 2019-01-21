@@ -839,7 +839,7 @@ int recurMkdir(const char *path){
 
     if(!xstat(dname)){
         INITIAL_SYS(mkdir)
-        log_debug("start creating dir %s", dname);
+            log_debug("start creating dir %s", dname);
         real_mkdir(dname, FOLDER_PERM);
     }
     return 0;
@@ -1175,7 +1175,7 @@ FILE* fufs_fopen_impl(const char * function, ...){
 end:
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-        recurMkdir(path);
+            recurMkdir(path);
     }
 
     if(strcmp(function,"fopen") == 0){
@@ -1356,7 +1356,7 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
     for (int i = 0; i < num; i++) {
         char each_layer_path[MAX_PATH];
         sprintf(each_layer_path, "%s/%s", layers[i], rel_path);
-        log_debug("preparing for accessing target layer: %s", each_layer_path);
+        //log_debug("preparing for accessing target layer: %s", each_layer_path);
 
         if(xstat(each_layer_path)){
             struct dirent_layers_entry* entry = getDirContent(each_layer_path);
@@ -1677,13 +1677,6 @@ int fufs_chmod_impl(const char* function, ...){
     if(strcmp(layer_path,container_root) == 0){
         strcpy(resolved, path);
     }else{
-        if(is_file_type(path, TYPE_FILE) || is_file_type(path, TYPE_LINK)){
-            if(!copyFile2RW(path, resolved)){
-                log_fatal("copy from %s to %s encounters error", path, resolved);
-                return -1;
-            }
-        }
-
         if(is_file_type(path, TYPE_DIR)){
             const char * container_root = getenv("ContainerRoot");
             char newpath[MAX_PATH];
@@ -1692,9 +1685,19 @@ int fufs_chmod_impl(const char* function, ...){
                 recurMkdirMode(newpath, FOLDER_PERM);
             }
             strcpy(resolved, newpath);
+            goto end;
+        }
+
+        if(is_file_type(path, TYPE_FILE) || is_file_type(path, TYPE_LINK)){
+            if(!copyFile2RW(path, resolved)){
+                log_fatal("copy from %s to %s encounters error", path, resolved);
+                return -1;
+            }
+            goto end;
         }
     }
 
+end:
     if(strcmp(function, "chmod") == 0){
         return RETURN_SYS(chmod,(resolved, mode))
     }

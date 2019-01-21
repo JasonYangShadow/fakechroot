@@ -41,12 +41,6 @@ wrapper(opendir, DIR*, (const char* name))
         return dirp;
     }
     darr = WRAPPER_FUFS(opendir,opendir,name)
-   /**
-    while(darr){
-        debug("dirents item: %s", darr->abs_path);
-        darr = darr->next;
-    }
-    **/
     return dirp;
 }
 
