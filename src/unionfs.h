@@ -41,6 +41,7 @@ enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
 // declaration ends
     DECLARE_SYS(opendir,DIR*,(const char* name))
     DECLARE_SYS(readdir,struct dirent*,(DIR* dirp))
+    DECLARE_SYS(readdir64,struct dirent64*,(DIR* dirp))
     DECLARE_SYS(__xstat,int,(int ver, const char *path, struct stat *buf))
     DECLARE_SYS(__lxstat,int,(int ver, const char *path, struct stat *buf))
     DECLARE_SYS(open,int,(const char *path, int oflag, mode_t mode))
@@ -73,6 +74,8 @@ enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
 
     struct dirent_obj {
         struct dirent* dp;
+        struct dirent64* dp64;
+        bool v64;
         char d_name[MAX_FILENAME];
         char abs_path[MAX_PATH];
         struct dirent_obj* next;
@@ -89,15 +92,19 @@ struct dirent_layers_entry{
 
 enum hash_type{md5,sha256};
 DIR * getDirents(const char* name, struct dirent_obj** darr, size_t *num);
+DIR* getDirents64(const char* name, struct dirent_obj** darr, size_t* num);
 DIR * getDirentsWithName(const char* name, struct dirent_obj** darr, size_t *num, char **names);
+DIR * getDirents64WithName(const char* name, struct dirent_obj** darr, size_t *num, char **names);
 void getDirentsOnlyNames(const char* name, char ***names,size_t *num);
-struct dirent_layers_entry* getDirContent(const char* abs_path);
+struct dirent_layers_entry* getDirContent(const char* abs_path, bool v64);
 char ** getLayerPaths(size_t *num);
 void filterMemDirents(const char* name, struct dirent_obj* darr, size_t num);
 void deleteItemInChain(struct dirent_obj** darr, size_t num);
 void deleteItemInChainByPointer(struct dirent_obj** darr, struct dirent_obj** curr);
 void addItemToHead(struct dirent_obj** darr, struct dirent* item);
+void addItemToHeadV64(struct dirent_obj** darr, struct dirent64* item);
 struct dirent * popItemFromHead(struct dirent_obj ** darr);
+struct dirent64 * popItemFromHeadV64(struct dirent_obj ** darr);
 void clearItems(struct dirent_obj** darr);
 //char *struct2hash(void* pointer,enum hash_type type);
 int get_abs_path(const char * path, char * abs_path, bool force);
@@ -120,6 +127,7 @@ bool copyFile2RW(const char *abs_path, char *resolved);
 bool resolveSymlink(const char *link, char *target);
 int recurMkdir(const char *path);
 int recurMkdirMode(const char *path, mode_t mode);
+struct dirent_obj* scanDir(const char *path, int *num, bool v64);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

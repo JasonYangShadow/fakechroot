@@ -37,7 +37,9 @@ wrapper(symlink, int, (const char * oldpath, const char * newpath))
         char rel_path[MAX_PATH];
         char layer_path[MAX_PATH];
         int ret = get_relative_path_layer(oldpath, rel_path, layer_path);
+        //we use absolute path rather than fake absolute path
         if(ret == 0){
+            /**
             char abs_oldpath[MAX_PATH];
             sprintf(abs_oldpath,"/%s", rel_path);
             if(!lxstat(abs_oldpath)){
@@ -45,14 +47,20 @@ wrapper(symlink, int, (const char * oldpath, const char * newpath))
             }else{
                 strcpy(old_resolved, oldpath);
             }
+            **/
+            strcpy(old_resolved, oldpath);
         }else{
+            /**
             if(!lxstat(oldpath)){
                 strcpy(old_resolved, oldpath);
             }else{
                 const char * container_root = getenv("ContainerRoot");
                 sprintf(old_resolved, "%s%s", container_root, oldpath);
             }
-        }
+            **/
+            const char * container_root = getenv("ContainerRoot");
+            sprintf(old_resolved, "%s%s", container_root, oldpath);
+        } 
     }else{
         strcpy(old_resolved, oldpath);
     }

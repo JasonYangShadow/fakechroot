@@ -15,9 +15,9 @@
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     *darr = NULL;
@@ -29,6 +29,43 @@ DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
         tmp->dp = entry;
         tmp->next = NULL;
+        tmp->v64 = false;
+        if(name[strlen(name)-1] == '/'){
+            sprintf(tmp->abs_path,"%s%s",name,entry->d_name);
+        }else{
+            sprintf(tmp->abs_path,"%s/%s",name,entry->d_name);
+        }
+        dedotdot(tmp->abs_path);
+        sprintf(tmp->d_name,"%s",entry->d_name);
+        if (*darr == NULL) {
+            *darr = curr = tmp;
+        } else {
+            curr->next = tmp;
+            curr = tmp;
+        }
+        (*num)++;
+    }
+    return dirp;
+}
+
+DIR* getDirents64(const char* name, struct dirent_obj** darr, size_t* num)
+{
+    INITIAL_SYS(opendir)
+    INITIAL_SYS(readdir64)
+
+    DIR* dirp = real_opendir(name);
+    struct dirent64* entry = NULL;
+    struct dirent_obj* curr = NULL;
+    *darr = NULL;
+    *num = 0;
+    while (entry = real_readdir64(dirp)) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
+        tmp->dp64 = entry;
+        tmp->next = NULL;
+        tmp->v64 = true;
         if(name[strlen(name)-1] == '/'){
             sprintf(tmp->abs_path,"%s%s",name,entry->d_name);
         }else{
@@ -51,9 +88,9 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
 {
 
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     *names = (char*)malloc(MAX_VALUE_SIZE);
@@ -68,6 +105,7 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
         strcat(*names, ";");
         tmp->dp = entry;
         tmp->next = NULL;
+        tmp->v64 = false;
         if(name[strlen(name)-1] == '/'){
             sprintf(tmp->abs_path,"%s%s",name,entry->d_name);
         }else{
@@ -84,6 +122,45 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
         (*num)++;
     }
     return dirp;
+}
+
+DIR * getDirents64WithName(const char* name, struct dirent_obj** darr, size_t *num, char **names){
+    INITIAL_SYS(opendir)
+    INITIAL_SYS(readdir64)
+
+    DIR* dirp = real_opendir(name);
+    struct dirent64* entry = NULL;
+    struct dirent_obj* curr = NULL;
+    *names = (char*)malloc(MAX_VALUE_SIZE);
+    *darr = NULL;
+    *num = 0;
+    while (entry = real_readdir64(dirp)) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
+        strcat(*names, entry->d_name);
+        strcat(*names, ";");
+        tmp->dp64 = entry;
+        tmp->next = NULL;
+        tmp->v64 = true;
+        if(name[strlen(name)-1] == '/'){
+            sprintf(tmp->abs_path,"%s%s",name,entry->d_name);
+        }else{
+            sprintf(tmp->abs_path,"%s/%s",name,entry->d_name);
+        }
+        dedotdot(tmp->abs_path);
+        sprintf(tmp->d_name,"%s",entry->d_name);
+        if (*darr == NULL) {
+            *darr = curr = tmp;
+        } else {
+            curr->next = tmp;
+            curr = tmp;
+        }
+        (*num)++;
+    }
+    return dirp;
+
 }
 
 void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
@@ -103,7 +180,7 @@ void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
     }
 }
 //this function will not delete the whiteout target folders/files, only hide the .wh/.op files
-struct dirent_layers_entry* getDirContent(const char* abs_path)
+struct dirent_layers_entry* getDirContent(const char* abs_path, bool v64)
 {
     if (!abs_path || *abs_path == '\0') {
         return NULL;
@@ -111,7 +188,11 @@ struct dirent_layers_entry* getDirContent(const char* abs_path)
     struct dirent_obj* darr;
     size_t num;
     struct dirent_layers_entry* p = (struct dirent_layers_entry*)malloc(sizeof(struct dirent_layers_entry));
-    getDirents(abs_path, &darr, &num);
+    if(v64){
+        getDirents64(abs_path, &darr, &num);
+    }else{
+        getDirents(abs_path, &darr, &num);
+    }
     strcpy(p->path, abs_path);
     struct dirent_obj* curr = darr;
     p->folder_num = p->wh_masked_num = p->file_num = 0;
@@ -263,6 +344,19 @@ void addItemToHead(struct dirent_obj** darr, struct dirent* item)
     struct dirent_obj* curr = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
     curr->dp = item;
     curr->next = *darr;
+    curr->v64 = false;
+    *darr = curr;
+}
+
+void addItemToHeadV64(struct dirent_obj** darr, struct dirent64* item)
+{
+    if (*darr == NULL || item == NULL) {
+        return;
+    }
+    struct dirent_obj* curr = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
+    curr->dp64 = item;
+    curr->next = *darr;
+    curr->v64 = true;
     *darr = curr;
 }
 
@@ -275,6 +369,19 @@ struct dirent* popItemFromHead(struct dirent_obj** darr)
     if (curr != NULL) {
         *darr = curr->next;
         return curr->dp;
+    }
+    return NULL;
+}
+
+struct dirent64* popItemFromHeadV64(struct dirent_obj** darr)
+{
+    if (*darr == NULL) {
+        return NULL;
+    }
+    struct dirent_obj* curr = *darr;
+    if (curr != NULL) {
+        *darr = curr->next;
+        return curr->dp64;
     }
     return NULL;
 }
@@ -1324,16 +1431,11 @@ end:
     }
 }
 
-struct dirent_obj* fufs_opendir_impl(const char* function,...){
-    //container layer from top to lower
-    va_list args;
-    va_start(args,function);
-    const char * abs_path = va_arg(args,const char *);
-    va_end(args);
-
-    size_t num;
-    char ** layers = getLayerPaths(&num);
-    if(num < 1){
+//this function scans content of given directory, and returns its content without whiteouted files
+struct dirent_obj* scanDir(const char *path, int *num, bool v64){
+    size_t layer_num;
+    char ** layers = getLayerPaths(&layer_num);
+    if(layer_num < 1){
         log_fatal("can't find layer info");
         return NULL;
     }
@@ -1347,19 +1449,19 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
 
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
-    int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
+    int ret = get_relative_path_layer(path, rel_path, layer_path);
     if (ret == -1) {
-        log_fatal("%s is not inside the container, abs path: %s", rel_path, abs_path);
+        log_fatal("%s is not inside the container, abs path: %s", rel_path, path);
         return NULL;
     }
 
-    for (int i = 0; i < num; i++) {
+    for (int i = 0; i < layer_num; i++) {
         char each_layer_path[MAX_PATH];
         sprintf(each_layer_path, "%s/%s", layers[i], rel_path);
         //log_debug("preparing for accessing target layer: %s", each_layer_path);
 
         if(xstat(each_layer_path)){
-            struct dirent_layers_entry* entry = getDirContent(each_layer_path);
+            struct dirent_layers_entry* entry = getDirContent(each_layer_path, v64);
 
             if (entry->data || entry->wh_masked_num > 0) {
                 //intialized part for the first layer
@@ -1453,7 +1555,24 @@ ends:
         destroy_hmap(wh_map);
     }
 
+    struct dirent_obj *loop = head;
+    while(loop != NULL){
+        *num++;
+        loop = loop->next;
+    }
     return head;
+}
+
+struct dirent_obj* fufs_opendir_impl(const char* function,...){
+    //container layer from top to lower
+    va_list args;
+    va_start(args,function);
+    const char * abs_path = va_arg(args,const char *);
+    va_end(args);
+
+    int num;
+    struct dirent_obj* ret = scanDir(abs_path, &num, false);
+    return ret;
 }
 
 int fufs_mkdir_impl(const char* function,...){
@@ -1669,10 +1788,10 @@ int fufs_chmod_impl(const char* function, ...){
     }
 
     INITIAL_SYS(chmod)
-    INITIAL_SYS(lchmod)
-    INITIAL_SYS(fchmodat)
+        INITIAL_SYS(lchmod)
+        INITIAL_SYS(fchmodat)
 
-    char resolved[MAX_PATH];
+        char resolved[MAX_PATH];
     const char * container_root = getenv("ContainerRoot");
     if(strcmp(layer_path,container_root) == 0){
         strcpy(resolved, path);

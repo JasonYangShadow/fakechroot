@@ -1,6 +1,6 @@
 /*
     libfakechroot -- fake chroot environment
-    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
+    Copyright (c) 2013 Piotr Roszatycki <dexter@debian.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -18,20 +18,16 @@
 */
 
 
+#ifndef __READDIR_H
+#define __READDIR_H
+
 #include <config.h>
 
 #include <dirent.h>
 #include "libfakechroot.h"
-#include "unionfs.h"
 
-extern struct dirent_obj * darr;
-wrapper(readdir, struct dirent *, (DIR * dirp))
-{
-    debug("readdir darr %s",darr);
-    if(darr != NULL){
-        struct dirent * entry = popItemFromHead(&darr);
-        return entry;
-    }else{
-        return nextcall(readdir)(dirp);
-    }
-}
+wrapper_proto(readdir64, struct dirent64 *, (DIR *));
+
+#endif
+
+#endif

@@ -25,13 +25,13 @@
 #include "unionfs.h"
 
 extern struct dirent_obj * darr;
-wrapper(readdir, struct dirent *, (DIR * dirp))
+wrapper(readdir64, struct dirent64 *, (DIR * dirp))
 {
-    debug("readdir darr %s",darr);
+    debug("readdir64 darr %s",darr);
     if(darr != NULL){
-        struct dirent * entry = popItemFromHead(&darr);
+        struct dirent64 * entry = popItemFromHeadV64(&darr);
         return entry;
     }else{
-        return nextcall(readdir)(dirp);
+        return nextcall(readdir64)(dirp);
     }
 }

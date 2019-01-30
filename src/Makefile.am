@@ -181,6 +181,8 @@ libfakechroot_la_SOURCES = \
 	msg.c \
 	readdir.h \
 	readdir.c \
+	readdir64.h \
+	readdir64.c \
 	unionfs.h \
 	unionfs.c
 libfakechroot_la_LDFLAGS = -avoid-version
