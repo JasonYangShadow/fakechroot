@@ -56,8 +56,12 @@ wrapper(scandir64, int, (const char * dir, struct dirent64 *** namelist, SCANDIR
         if(num > 0 && compar != NULL){
             qsort(*namelist, num, sizeof(struct dirent64 *), compare64);
         }
+        clearItems(&ret);
         return i;
     }else{
+        if(ret != NULL){
+            clearItems(&ret);
+        }
         *namelist = NULL;
         return 0;
     }

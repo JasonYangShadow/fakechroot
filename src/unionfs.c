@@ -23,7 +23,7 @@ DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
     *darr = NULL;
     *num = 0;
     while (entry = real_readdir(dirp)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
@@ -59,7 +59,7 @@ DIR* getDirents64(const char* name, struct dirent_obj** darr, size_t* num)
     *darr = NULL;
     *num = 0;
     while (entry = real_readdir64(dirp)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
@@ -97,7 +97,7 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
     *darr = NULL;
     *num = 0;
     while (entry = real_readdir(dirp)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
@@ -135,7 +135,7 @@ DIR * getDirents64WithName(const char* name, struct dirent_obj** darr, size_t *n
     *darr = NULL;
     *num = 0;
     while (entry = real_readdir64(dirp)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
@@ -165,14 +165,14 @@ DIR * getDirents64WithName(const char* name, struct dirent_obj** darr, size_t *n
 
 void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     *names = (char **)malloc(sizeof(char *)*MAX_VALUE_SIZE);
     *num = 0;
     while(entry = real_readdir(dirp)){
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         (*names)[*num] = strdup(entry->d_name);
@@ -1071,6 +1071,23 @@ bool resolveSymlink(const char *link, char *target){
     }
 }
 
+bool is_container_root(const char *abs_path){
+    if(abs_path == NULL || *abs_path == '\0'){
+        return false;
+    }
+    if(*abs_path != '/'){
+        log_error("input path should be absolute path rather than relative path");
+        return false;
+    }
+    char rel_path[MAX_PATH];
+    char layer_path[MAX_PATH];
+    int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
+    if(ret == 0 && strcmp(rel_path, ".") == 0){
+        return true;
+    }
+    return false;
+}
+
 bool pathIncluded(const char *abs_path){
     if(abs_path == NULL || *abs_path == '\0'){
         return false;
@@ -1555,6 +1572,7 @@ ends:
         destroy_hmap(wh_map);
     }
 
+    *num = 0;
     struct dirent_obj *loop = head;
     while(loop != NULL){
         *num++;

@@ -128,6 +128,7 @@ bool resolveSymlink(const char *link, char *target);
 int recurMkdir(const char *path);
 int recurMkdirMode(const char *path, mode_t mode);
 struct dirent_obj* scanDir(const char *path, int *num, bool v64);
+bool is_container_root(const char *abs_path);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);
