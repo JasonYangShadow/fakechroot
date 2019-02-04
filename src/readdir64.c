@@ -27,9 +27,9 @@
 extern struct dirent_obj * darr;
 wrapper(readdir64, struct dirent64 *, (DIR * dirp))
 {
-    //debug("readdir64 darr %s",darr);
+    debug("readdir64");
     if(darr != NULL){
-        struct dirent64 * entry = popItemFromHeadV64(&darr);
+        struct dirent64* entry = popItemFromHeadV64(&darr);
         return entry;
     }else{
         return nextcall(readdir64)(dirp);

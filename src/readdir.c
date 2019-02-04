@@ -27,7 +27,7 @@
 extern struct dirent_obj * darr;
 wrapper(readdir, struct dirent *, (DIR * dirp))
 {
-    //debug("readdir darr %s",darr);
+    debug("readdir");
     if(darr != NULL){
         struct dirent * entry = popItemFromHead(&darr);
         return entry;

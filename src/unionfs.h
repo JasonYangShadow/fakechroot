@@ -75,7 +75,6 @@ enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
     struct dirent_obj {
         struct dirent* dp;
         struct dirent64* dp64;
-        bool v64;
         char d_name[MAX_FILENAME];
         char abs_path[MAX_PATH];
         struct dirent_obj* next;
@@ -92,11 +91,9 @@ struct dirent_layers_entry{
 
 enum hash_type{md5,sha256};
 DIR * getDirents(const char* name, struct dirent_obj** darr, size_t *num);
-DIR* getDirents64(const char* name, struct dirent_obj** darr, size_t* num);
 DIR * getDirentsWithName(const char* name, struct dirent_obj** darr, size_t *num, char **names);
-DIR * getDirents64WithName(const char* name, struct dirent_obj** darr, size_t *num, char **names);
 void getDirentsOnlyNames(const char* name, char ***names,size_t *num);
-struct dirent_layers_entry* getDirContent(const char* abs_path, bool v64);
+struct dirent_layers_entry* getDirContent(const char* abs_path);
 char ** getLayerPaths(size_t *num);
 void filterMemDirents(const char* name, struct dirent_obj* darr, size_t num);
 void deleteItemInChain(struct dirent_obj** darr, size_t num);

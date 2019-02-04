@@ -31,6 +31,24 @@ wrapper(getcwd, char *, (char * buf, size_t size))
     if ((cwd = nextcall(getcwd)(buf, size)) == NULL) {
         return NULL;
     }
-    narrow_chroot_path(cwd);
+
+    char rel_path[MAX_PATH];
+    char layer_path[MAX_PATH];
+    int ret = get_relative_path_layer(cwd, rel_path, layer_path);
+    if(ret != 0){
+        debug("current cwd is not inside container %s",cwd);
+        errno = EACCES;
+        return NULL;
+    }
+
+    memset(cwd,'\0',strlen(cwd));
+    memset(buf,'\0',strlen(cwd));
+    if(strcmp(rel_path,".") == 0){
+        strcpy(cwd,"/");
+        strcpy(buf,"/");
+    }else{
+        sprintf(cwd,"/%s",rel_path);
+        sprintf(buf,"/%s", rel_path);
+    }
     return cwd;
 }

@@ -115,12 +115,12 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     char * name_dup = strdup(name);
     dedotdot(name_dup);
 
+    const char * container_root = getenv("ContainerRoot");
     if (*name_dup == '/') {
         if(pathExcluded(name_dup)){
             strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
         }else{
             if(!findFileInLayers(name_dup, resolved)){
-                const char * container_root = getenv("ContainerRoot");
                 char rel_path[FAKECHROOT_PATH_MAX];
                 char layer_path[FAKECHROOT_PATH_MAX];
                 int ret = get_relative_path_layer(name_dup, rel_path, layer_path);
@@ -138,7 +138,11 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
 
         /******************************************/
         char tmp[FAKECHROOT_PATH_MAX];
-        sprintf(tmp,"%s/%s",cwd,name_dup);
+        if(strcmp(cwd,"/") == 0){
+            sprintf(tmp,"%s/%s",container_root, name_dup);
+        }else{
+            sprintf(tmp,"%s%s/%s",container_root, cwd, name_dup);
+        }
 
         char rel_path[FAKECHROOT_PATH_MAX];
         char layer_path[FAKECHROOT_PATH_MAX];
@@ -201,7 +205,11 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
 
         /******************************************/
         char tmp[FAKECHROOT_PATH_MAX];
-        sprintf(tmp,"%s/%s",cwd,name_dup);
+        if(strcmp(cwd,"/") == 0){
+            sprintf(tmp,"%s/%s",container_root, name_dup);
+        }else{
+            sprintf(tmp,"%s%s/%s",container_root, cwd, name_dup);
+        }
 
         char rel_path[FAKECHROOT_PATH_MAX];
         char layer_path[FAKECHROOT_PATH_MAX];
