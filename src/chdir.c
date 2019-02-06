@@ -63,6 +63,11 @@ wrapper(chdir, int, (const char * path))
             return nextcall(chdir)(link);
         }
     }
+    if(!is_inside_container(resolved)){
+        debug("chdir %s escapes from container, we have to fix it by force");
+        const char * container_root = getenv("ContainerRoot");
+        strcpy(resolved, container_root);
+    }
     debug("chdir %s",resolved);
     return nextcall(chdir)(resolved);
 }

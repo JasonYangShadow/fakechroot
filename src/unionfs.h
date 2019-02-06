@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 
-#define MAX_PATH 1024
+#define MAX_PATH PATH_MAX
 #define MAX_ITEMS 1024
 #define MAX_FILENAME 256
 #define MAX_VALUE_SIZE 1*1024*1024
@@ -71,12 +71,14 @@ enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
     DECLARE_SYS(freopen64,FILE*,(const char * pathname, const char * mode, FILE *stream))
     DECLARE_SYS(readlink,ssize_t,(const char *path, char *buf, size_t bufsiz))
     DECLARE_SYS(execve,int,(const char *filename, char *const argv[], char *const envp[]))
+    DECLARE_SYS(getcwd,char*,(char* buf, size_t size))
+    DECLARE_SYS(getwd,char*,(char* buf))
 
     struct dirent_obj {
         struct dirent* dp;
         struct dirent64* dp64;
         char d_name[MAX_FILENAME];
-        char abs_path[MAX_PATH];
+        char abs_path[PATH_MAX];
         struct dirent_obj* next;
     };
 
@@ -126,6 +128,7 @@ int recurMkdir(const char *path);
 int recurMkdirMode(const char *path, mode_t mode);
 struct dirent_obj* scanDir(const char *path, int *num, bool v64);
 bool is_container_root(const char *abs_path);
+bool is_inside_container(const char *abs_path);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

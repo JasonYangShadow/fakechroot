@@ -20,6 +20,7 @@
 
 #include <config.h>
 
+#ifdef HAVE_READDIR
 #include <dirent.h>
 #include "libfakechroot.h"
 #include "unionfs.h"
@@ -27,11 +28,15 @@
 extern struct dirent_obj * darr;
 wrapper(readdir, struct dirent *, (DIR * dirp))
 {
-    debug("readdir");
     if(darr != NULL){
         struct dirent * entry = popItemFromHead(&darr);
+        debug("readdir %s",entry->d_name);
         return entry;
     }else{
+        debug("default readdir");
         return nextcall(readdir)(dirp);
     }
 }
+#else
+typedef int empty_translation_unit;
+#endif

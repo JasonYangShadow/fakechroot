@@ -252,6 +252,8 @@ AC_CHECK_FUNCS(m4_normalize([
     readlink
     readlinkat
     realpath
+    readdir
+    readdir64
     remove
     removexattr
     rename

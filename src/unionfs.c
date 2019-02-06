@@ -15,10 +15,10 @@
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
-    INITIAL_SYS(readdir)
-    INITIAL_SYS(readdir64)
+        INITIAL_SYS(readdir)
+        INITIAL_SYS(readdir64)
 
-    DIR* dirp = real_opendir(name);
+        DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent64* entry64 =NULL;
     struct dirent_obj* curr = NULL;
@@ -66,10 +66,10 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
 {
 
     INITIAL_SYS(opendir)
-    INITIAL_SYS(readdir)
-    INITIAL_SYS(readdir64)
+        INITIAL_SYS(readdir)
+        INITIAL_SYS(readdir64)
 
-    DIR* dirp = real_opendir(name);
+        DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent64* entry64 = NULL;
     struct dirent_obj* curr = NULL;
@@ -1031,6 +1031,23 @@ bool is_container_root(const char *abs_path){
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
     if(ret == 0 && strcmp(rel_path, ".") == 0){
+        return true;
+    }
+    return false;
+}
+
+bool is_inside_container(const char *abs_path){
+    if(abs_path == NULL || *abs_path == '\0'){
+        return false;
+    }
+    if(*abs_path != '/'){
+        log_error("input path should be absolute path rather than relative path");
+        return false;
+    }
+    char rel_path[MAX_PATH];
+    char layer_path[MAX_PATH];
+    int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
+    if(ret == 0){
         return true;
     }
     return false;
