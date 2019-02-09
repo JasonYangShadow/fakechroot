@@ -100,7 +100,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     int cwdfd = 0;
     char cwd[FAKECHROOT_PATH_MAX];
 
-    //debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
+    debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
     if (name == NULL) {
         resolved = NULL;
         goto end;
@@ -132,7 +132,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
             }
         }
     } else if(dirfd == AT_FDCWD) {
-        if (! getcwd(cwd, FAKECHROOT_PATH_MAX)) {
+        if (!getcwd(cwd, FAKECHROOT_PATH_MAX)) {
             goto error;
         }
 
@@ -199,6 +199,10 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
             goto error;
         }
         if (fchdir(cwdfd) == -1) {
+            goto error;
+        }
+        char cwd2[FAKECHROOT_PATH_MAX];
+        if (! getcwd(cwd2, FAKECHROOT_PATH_MAX)) {
             goto error;
         }
         (void)close(cwdfd);

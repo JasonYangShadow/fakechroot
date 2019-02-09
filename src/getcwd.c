@@ -30,6 +30,7 @@ wrapper(getcwd, char *, (char * buf, size_t size))
 
     debug("getcwd(%p, %zd)", buf, size);
     if ((cwd = real_getcwd(buf, size)) == NULL){
+        debug("could not get cwd, return NULL");
         return NULL;
     }
 
