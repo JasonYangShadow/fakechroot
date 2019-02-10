@@ -133,16 +133,7 @@ wrapper(linkat, int, (int olddirfd, const char * oldpath, int newdirfd, const ch
 
     debug("linkat oldpath: %s, newpath: %s", old_resolved, newpath);
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, old_resolved, newpath);
-    if (r && rt_paths){
-        return WRAPPER_FUFS(link, linkat, olddirfd, rt_paths[0], newdirfd, rt_paths[1], flags)
-    }else if(r && !rt_paths){
-        return WRAPPER_FUFS(link, linkat, olddirfd, old_resolved, newdirfd, newpath, flags)
-    }else {
-        errno = EACCES;
-        return -1;
-    }
+    return WRAPPER_FUFS(link, linkat, olddirfd, old_resolved, newdirfd, newpath, flags)
 }
 
 #else

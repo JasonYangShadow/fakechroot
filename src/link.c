@@ -126,14 +126,5 @@ wrapper(link, int, (const char *oldpath, const char *newpath))
     expand_chroot_path(newpath);
 
     debug("link oldpath: %s, newpath: %s", old_resolved, newpath);
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, old_resolved, newpath);
-    if (r && rt_paths){
-        return WRAPPER_FUFS(link,link,rt_paths[0],rt_paths[1])
-    }else if(r && !rt_paths){
-        return WRAPPER_FUFS(link,link,old_resolved,newpath)
-    }else {
-        errno = EACCES;
-        return -1;
-    }
+    return WRAPPER_FUFS(link,link,old_resolved,newpath)
 }

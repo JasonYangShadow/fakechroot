@@ -35,11 +35,8 @@ wrapper(rename, int, (const char * oldpath, const char * newpath))
     char** rt_paths = NULL;
     bool r = rt_mem_check(2, rt_paths, oldpath, newpath);
     if (r && rt_paths){
-      return WRAPPER_FUFS(rename,rename, rt_paths[0], rt_paths[1])
-    }else if(r && !rt_paths){
-      return WRAPPER_FUFS(rename,rename, oldpath, newpath)
+      return nextcall(rename)(rt_paths[0], rt_paths[1]);
     }else{
-      errno = EACCES;
-      return -1;
+      return WRAPPER_FUFS(rename,rename, oldpath, newpath)
     }
 }

@@ -60,16 +60,7 @@ wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpat
 
     debug("symlinkat oldpath: %s, newpath: %s, newdirfd: %d", old_resolved, new_resolved, newdirfd);
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, old_resolved, new_resolved);
-    if (r && rt_paths){
-        return WRAPPER_FUFS(symlink, symlinkat, rt_paths[0], newdirfd, rt_paths[1])
-    }else if(r && !rt_paths){
-        return WRAPPER_FUFS(symlink, symlinkat, old_resolved, newdirfd, new_resolved)
-    }else{
-        errno = EACCES;
-        return -1;
-    }
+    return WRAPPER_FUFS(symlink, symlinkat, old_resolved, newdirfd, new_resolved)
 }
 
 #else

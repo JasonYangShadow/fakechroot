@@ -38,12 +38,9 @@ wrapper(renameat, int, (int olddirfd, const char * oldpath, int newdirfd, const 
     char** rt_paths = NULL;
     bool r = rt_mem_check(2, rt_paths, oldpath, newpath);
     if (r && rt_paths){
-      return WRAPPER_FUFS(rename,renameat,olddirfd, rt_paths[0], newdirfd, rt_paths[1])
-    }else if(r && !rt_paths){
-      return WRAPPER_FUFS(rename,renameat,olddirfd, oldpath, newdirfd, newpath)
+      return nextcall(renameat)(olddirfd, rt_paths[0], newdirfd, rt_paths[1]);
     }else{
-      errno = EACCES;
-      return -1;
+      return WRAPPER_FUFS(rename,renameat,olddirfd, oldpath, newdirfd, newpath)
     }
 }
 

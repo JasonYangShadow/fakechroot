@@ -79,14 +79,5 @@ wrapper(symlink, int, (const char * oldpath, const char * newpath))
 
     debug("symlink oldpath: %s, newpath: %s", old_resolved, new_resolved);
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, old_resolved, new_resolved);
-    if (r && rt_paths){
-      return WRAPPER_FUFS(symlink, symlink, rt_paths[0], rt_paths[1])
-    }else if(r && !rt_paths){
-      return WRAPPER_FUFS(symlink, symlink, old_resolved, new_resolved)
-    }else{
-      errno = EACCES;
-      return -1;
-    }
+    return WRAPPER_FUFS(symlink, symlink, old_resolved, new_resolved)
 }
