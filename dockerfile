@@ -24,4 +24,5 @@ RUN git clone https://github.com/msgpack/msgpack-c.git /tmp && cd /tmp/msgpack-c
 RUN git clone https://github.com/JasonYangShadow/fakechroot /tmp && cd /tmp/fakechroot && ./autogen.sh && ./configure && make
 
 #step 3: copy files to shared folder
-COPY /tmp/fakechroot/src/.libs/libfakechroot.so /data
+COPY /tmp/fakechroot/src/.libs/libfakechroot.so /data/libfakechroot.so
+COPY /usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so /data/libfakeroot.so

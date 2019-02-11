@@ -68,7 +68,7 @@ bool rt_mem_con_check(const char* containerid, const char* function, int n, char
         }//path[i] ends
     }
     //if not changed, release malloc memory
-    if(!b_change){
+    if(!b_change && value && *rt_paths){
         for(int i = 0; i<n; i++){
             if(*rt_paths && (*rt_paths)[i]){
                 free((*rt_paths)[i]);
