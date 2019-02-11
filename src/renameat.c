@@ -35,8 +35,8 @@ wrapper(renameat, int, (int olddirfd, const char * oldpath, int newdirfd, const 
     oldpath = tmp;
     expand_chroot_path_at(newdirfd, newpath);
     
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, oldpath, newpath);
+    char** rt_paths;
+    bool r = rt_mem_check("renameat", 2, &rt_paths, oldpath, newpath);
     if (r && rt_paths){
       return nextcall(renameat)(olddirfd, rt_paths[0], newdirfd, rt_paths[1]);
     }else{

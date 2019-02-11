@@ -45,8 +45,8 @@ wrapper_alias(open64, int, (const char * pathname, int flags, ...))
         va_end(arg);
     }
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
+    char** rt_paths;
+    bool r = rt_mem_check("open64", 1, &rt_paths, pathname);
     if (r && rt_paths){
         return nextcall(open64)(rt_paths[0], flags, mode);
     }else {

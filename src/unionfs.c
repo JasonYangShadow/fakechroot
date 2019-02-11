@@ -921,7 +921,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            log_debug("start creating dir %s", path);
+        log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -1172,7 +1172,7 @@ int fufs_open_impl(const char* function, ...){
         }
 
 end_folder:
-    if(!xstat(destpath)){
+    if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
         int ret = recurMkdirMode(destpath,FOLDER_PERM);
         if(ret != 0){
@@ -1184,7 +1184,7 @@ end_folder:
 
 
 end_file:
-    if(!xstat(destpath)){
+    if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
         char dname[MAX_PATH];
         strcpy(dname,destpath);

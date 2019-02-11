@@ -27,73 +27,80 @@ bool get_process_info(struct ProcessInfo* pinfo){
     return false;
 }
 
-bool rt_mem_con_check(const char* containerid, const char* pname, const char* function, int n, char** paths, char** rt_paths){
+bool rt_mem_con_check(const char* containerid, const char* function, int n, char** paths, char*** rt_paths){
     char key[MEMCACHED_MAX_KEY];
     //key format: container_id:program full path:system call wrapper
     //eg, id:/bin/bash:open
     //value format: path:replace_path;path:replace_path;
-    sprintf(key,"%s:%s:%s",containerid,pname, function);
+    sprintf(key,"map:%s:%s",containerid,function);
     char* value = getValue(key);
+    log_debug("query remote memcached with key: %s, return value: %s", key, value);
     bool b_change = false;
+    const char* container_root = getenv("ContainerRoot");
     if(value != NULL){
-        if(rt_paths == NULL){
-            rt_paths = (char**)malloc(sizeof(char*)*n);
-        }
+        *rt_paths = (char**)malloc(sizeof(char*)*n);
         for(int i = 0; i<n; i++){
             b_change = false;
             char* valret = NULL;
             char* rest = value;
             char* token = NULL;
-            while((token = strtok_r(rest,";",&rest))){
-                //token = current split
-                char tkey[MAX_PATH];
-                sprintf(tkey, "%s:",paths[i]);
-                if((valret = strstr(tkey, token))){
-                    char *path = (char *)malloc(sizeof(char)*MAX_PATH);
-                    strcpy(path, token+strlen(tkey));
-                    rt_paths[i] = path;
-                    b_change = true;
-                    break;
+            if(strncmp(container_root, paths[i], strlen(container_root)) == 0){
+                if(!lxstat(paths[i])){
+                    char tkey[MAX_PATH];
+                    sprintf(tkey, "%s:",paths[i]+strlen(container_root));
+                    while((token = strtok_r(rest,";",&rest))){
+                        //token = current split
+                        if((valret = strstr(token, tkey))){
+                            char *path = (char *)malloc(sizeof(char)*MAX_PATH);
+                            strcpy(path, token+strlen(tkey));
+                            log_debug("replacing value, old->%s, new->%s", tkey, path);
+                            (*rt_paths)[i] = path;
+                            b_change = true;
+                            break;
+                        }
+                    }
                 }
             }
             if(!b_change){
-                strcpy(rt_paths[i], paths[i]);
+                (*rt_paths)[i] = (char *)malloc(sizeof(char)*MAX_PATH);
+                strcpy((*rt_paths)[i], paths[i]);
             }
         }//path[i] ends
     }
     //if not changed, release malloc memory
     if(!b_change){
         for(int i = 0; i<n; i++){
-            if(rt_paths && rt_paths[i]){
-                free(rt_paths[i]);
+            if(*rt_paths && (*rt_paths)[i]){
+                free((*rt_paths)[i]);
             }
         }
-        if(rt_paths){
-            free(rt_paths);
+        if(*rt_paths){
+            free(*rt_paths);
         }
-        rt_paths = NULL;
+        *rt_paths = NULL;
     }
     return b_change;
 }
 
 //return: true -> should use replaced path rather than original one
-bool rt_mem_check(int n, char** rt_paths, ...){
-    char * check_switch = getenv("__priv_switch");
+bool rt_mem_check(const char* function, int n, char*** rt_paths, ...){
+    char * check_switch = getenv("__PRIV_SWITCH");
     if(!check_switch){
         return false;
     }
 
-    struct ProcessInfo pinfo;
-    char buff[MAX_PATH];
+    /**
+      struct ProcessInfo pinfo;
     //could not get process info, let's pass it
     if(!get_process_info(&pinfo)){
-        return false;
+    return false;
     }
+     **/
+    log_debug("dynamical remap feature is enabled");
+
+    char** paths = (char **)malloc(sizeof(char *)*n);
     va_list args;
     va_start(args, rt_paths);
-    const char* function = va_arg(args, const char*);
-
-    char* paths[n];
     for(int i=0;i<n;i++){
         paths[i] = va_arg(args,char*);
         //only check absolute path
@@ -107,7 +114,8 @@ bool rt_mem_check(int n, char** rt_paths, ...){
     char * containerid = getenv("ContainerId");
 
     if(containerid){
-        return rt_mem_con_check(containerid, pinfo.pname, function, n, paths, rt_paths);
+       log_debug("start checking incoming request, containerid: %s, function: %s", containerid, function);
+       return rt_mem_con_check(containerid, function, n, paths, rt_paths);
     }
     log_fatal("fatal error, can't get container id");
     return false;

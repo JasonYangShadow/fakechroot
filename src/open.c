@@ -40,8 +40,8 @@ wrapper_alias(open, int, (const char* pathname, int flags, ...))
         va_end(arg);
     }
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
+    char** rt_paths;
+    bool r = rt_mem_check("open", 1, &rt_paths, pathname);
     if (r && rt_paths) {
         return nextcall(open)(rt_paths[0], flags, mode);
     } else {

@@ -47,8 +47,8 @@ wrapper_alias(openat64, int, (int dirfd, const char * pathname, int flags, ...))
         va_end(arg);
     }
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
+    char** rt_paths;
+    bool r = rt_mem_check("openat64", 1, &rt_paths, pathname);
     if (r && rt_paths){
         return nextcall(openat64)(dirfd, rt_paths[0], flags, mode);
     }else {
