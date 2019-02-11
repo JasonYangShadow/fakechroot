@@ -146,8 +146,11 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
             snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",cwd,name_dup);
         }
         dedotdot(resolved);
+        if(pathExcluded(resolved)){
+            goto end;
+        }
         if(!is_inside_container(resolved)){
-            debug("path: %s escape from container, we have to fix it by force", resolved);
+            debug("rel2absLayer path: %s escape from container, we have to fix it by force", resolved);
             strcpy(resolved, container_root);
         }
     }

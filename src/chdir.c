@@ -56,6 +56,10 @@ wrapper(chdir, int, (const char * path))
     char resolved[MAX_PATH];
     rel2absLayer(path, resolved);
 
+    if(pathExcluded(path)){
+        return nextcall(chdir)(resolved);
+    }
+
     if(xstat(path) && is_file_type(resolved,TYPE_LINK)){
         char link[FAKECHROOT_PATH_MAX];
         if(resolveSymlink(resolved,link)){
