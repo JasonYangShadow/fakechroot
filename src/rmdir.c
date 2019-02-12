@@ -27,15 +27,5 @@ wrapper(rmdir, int, (const char * pathname))
 {
     debug("rmdir(\"%s\")", pathname);
     expand_chroot_path(pathname);
-    
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, pathname);
-    if (r && rt_paths){
-      return WRAPPER_FUFS(rmdir,rmdir,rt_paths[0])
-    }else if(r && !rt_paths){
-      return WRAPPER_FUFS(rmdir,rmdir,pathname)
-    }else{
-      errno = EACCES;
-      return -1;
-    }
+    return WRAPPER_FUFS(rmdir,rmdir,pathname)
 }

@@ -30,11 +30,7 @@
 
 wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpath))
 {
-    //char tmp[FAKECHROOT_PATH_MAX];
-    //expand_chroot_rel_path(oldpath);
-    //strcpy(tmp, oldpath);
-    //oldpath = tmp;
-
+    debug("symlinkat starts oldpath: %s, newdirfd: %d, newpath: %s", oldpath, newdirfd, newpath);
     char old_resolved[MAX_PATH];
     if(*oldpath == '/'){
         expand_chroot_path(oldpath);
@@ -42,20 +38,10 @@ wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpat
         char layer_path[MAX_PATH];
         int ret = get_relative_path_layer(oldpath, rel_path, layer_path);
         if(ret == 0){
-            char abs_oldpath[MAX_PATH];
-            sprintf(abs_oldpath,"/%s", rel_path);
-            if(!lxstat(abs_oldpath)){
-                strcpy(old_resolved, abs_oldpath);
-            }else{
-                strcpy(old_resolved, oldpath);
-            }
+            strcpy(old_resolved, oldpath);
         }else{
-            if(!lxstat(oldpath)){
-                strcpy(old_resolved, oldpath);
-            }else{
-                const char * container_root = getenv("ContainerRoot");
-                sprintf(old_resolved, "%s%s", container_root, oldpath);
-            }
+            const char * container_root = getenv("ContainerRoot");
+            sprintf(old_resolved, "%s%s", container_root, oldpath);
         }
     }else{
         strcpy(old_resolved, oldpath);
@@ -67,24 +53,14 @@ wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpat
         expand_chroot_path(newpath);
         strcpy(new_resolved, newpath);
     }else{
-        char cwd[MAX_PATH];
-        getcwd_real(cwd,MAX_PATH);
-        sprintf(new_resolved, "%s/%s", cwd, newpath);
+        expand_chroot_path_at(newdirfd, newpath);
+        strcpy(new_resolved, newpath);
     }
     dedotdot(new_resolved);
 
     debug("symlinkat oldpath: %s, newpath: %s, newdirfd: %d", old_resolved, new_resolved, newdirfd);
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(2, rt_paths, old_resolved, new_resolved);
-    if (r && rt_paths){
-        return WRAPPER_FUFS(symlink, symlinkat, rt_paths[0], newdirfd, rt_paths[1])
-    }else if(r && !rt_paths){
-        return WRAPPER_FUFS(symlink, symlinkat, old_resolved, newdirfd, new_resolved)
-    }else{
-        errno = EACCES;
-        return -1;
-    }
+    return WRAPPER_FUFS(symlink, symlinkat, old_resolved, newdirfd, new_resolved)
 }
 
 #else

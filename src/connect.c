@@ -63,7 +63,13 @@ wrapper(connect, int, (int sockfd, CONNECT_TYPE_ARG2(addr), socklen_t addrlen))
             path = tmp;
         }
         else {
-            expand_chroot_path(path);
+            //check if connect to memcached.pid
+            const char* memcached_path = getenv("MEMCACHED_PID");
+            if(path && memcached_path && strcmp(path, memcached_path) == 0){
+                ;
+            }else{
+                expand_chroot_path(path);
+            }
         }
 
         if (strlen(path) >= sizeof(addr_un->sun_path)) {

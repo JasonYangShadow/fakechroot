@@ -20,53 +20,25 @@
 
 #include <config.h>
 
-#ifdef HAVE_GETWD
+#ifdef HAVE_READDIR64
 
+#define _LARGEFILE64_SOURCE
+#include <dirent.h>
 #include "libfakechroot.h"
 #include "unionfs.h"
 
-wrapper(getwd, char *, (char * buf))
+extern struct dirent_obj * darr;
+wrapper(readdir64, struct dirent64 *, (DIR * dirp))
 {
-    char *cwd;
-    INITIAL_SYS(getwd)
-
-    debug("getwd(&buf)");
-    if ((cwd = real_getwd(buf)) == NULL){
-            return NULL;
-    }
-
-    char rel_path[MAX_PATH];
-    char layer_path[MAX_PATH];
-    int ret = get_relative_path_layer(cwd, rel_path, layer_path);
-    if(ret != 0){
-        debug("current cwd is not inside container %s",cwd);
-        errno = EACCES;
-        return NULL;
-    }
-
-    memset(cwd,'\0',strlen(cwd));
-    if(strcmp(rel_path,".") == 0){
-        strcpy(cwd,"/");
+    if(darr != NULL){
+        struct dirent64* entry = popItemFromHeadV64(&darr);
+        debug("readdir64 %s", entry->d_name);
+        return entry;
     }else{
-        size_t len = strlen(rel_path) + 2;
-        snprintf(cwd,len,"/%s",rel_path);
+        debug("default readdir64");
+        return nextcall(readdir64)(dirp);
     }
-    return cwd;
 }
-
-/**
-wrapper(getwd, char *, (char * buf))
-{
-    char *cwd;
-
-    debug("getwd(&buf)");
-    if ((cwd = nextcall(getwd)(buf)) == NULL) {
-        return NULL;
-    }
-    narrow_chroot_path(cwd);
-    return cwd;
-}
-**/
 #else
 typedef int empty_translation_unit;
 #endif

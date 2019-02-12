@@ -40,14 +40,11 @@ wrapper_alias(open, int, (const char* pathname, int flags, ...))
         va_end(arg);
     }
 
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
+    char** rt_paths;
+    bool r = rt_mem_check("open", 1, &rt_paths, pathname);
     if (r && rt_paths) {
-        return WRAPPER_FUFS(open,open,rt_paths[0], flags, mode)
-    } else if (r && !rt_paths) {
-        return WRAPPER_FUFS(open,open,pathname, flags, mode)
+        return nextcall(open)(rt_paths[0], flags, mode);
     } else {
-        errno = EACCES;
-        return -1;
+        return WRAPPER_FUFS(open,open,pathname, flags, mode)
     }
 }

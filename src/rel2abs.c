@@ -83,6 +83,7 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
     char * name_dup = strdup(name);
     dedotdot(name_dup);
 
+    const char * container_root = getenv("ContainerRoot");
     if (*name_dup == '/') {
         if(pathExcluded(name_dup)){
             strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
@@ -138,15 +139,21 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
                     }
                 }
                 if(!b_resolved){
-                    const char * container_root = getenv("ContainerRoot");
                     snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",container_root,rel_path);
                 }
             }
         }else{
             snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",cwd,name_dup);
         }
+        dedotdot(resolved);
+        if(pathExcluded(resolved)){
+            goto end;
+        }
+        if(!is_inside_container(resolved)){
+            debug("rel2absLayer path: %s escape from container, we have to fix it by force", resolved);
+            strcpy(resolved, container_root);
+        }
     }
-    dedotdot(resolved);
 
 end:
     dedotdot(resolved);

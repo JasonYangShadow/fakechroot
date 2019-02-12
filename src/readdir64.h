@@ -1,6 +1,6 @@
 /*
     libfakechroot -- fake chroot environment
-    Copyright (c) 2010, 2013 Piotr Roszatycki <dexter@debian.org>
+    Copyright (c) 2013 Piotr Roszatycki <dexter@debian.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -18,23 +18,16 @@
 */
 
 
+#ifndef __READDIR_H
+#define __READDIR_H
+
 #include <config.h>
 
-#ifdef HAVE_FCHMODAT
-
-#define _ATFILE_SOURCE
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <dirent.h>
 #include "libfakechroot.h"
-#include "unionfs.h"
 
-wrapper(fchmodat, int, (int dirfd, const char * path, mode_t mode, int flag))
-{
-    debug("fchmodat(%d, \"%s\", 0%o, %d)", dirfd, path, mode, flag);
-    expand_chroot_path_at(dirfd, path);
-    return WRAPPER_FUFS(chmod, fchmodat, dirfd, path, mode, flag)
-}
+wrapper_proto(readdir64, struct dirent64 *, (DIR *));
 
-#else
-typedef int empty_translation_unit;
+#endif
+
 #endif

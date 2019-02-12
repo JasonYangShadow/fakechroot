@@ -33,17 +33,7 @@ wrapper(mkdirat, int, (int dirfd, const char * pathname, mode_t mode))
 {
     debug("mkdirat(%d, \"%s\", 0%o)", dirfd, pathname, mode);
     expand_chroot_path_at(dirfd, pathname);
-
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
-    if (r && rt_paths){
-        return WRAPPER_FUFS(mkdir,mkdirat,dirfd,rt_paths[0],mode)
-    }else if(r && !rt_paths){
-        return WRAPPER_FUFS(mkdir,mkdirat,dirfd,pathname,mode)
-    }else {
-        errno = EACCES;
-        return -1;
-    }
+    return WRAPPER_FUFS(mkdir,mkdirat,dirfd,pathname,mode)
 }
 
 #else

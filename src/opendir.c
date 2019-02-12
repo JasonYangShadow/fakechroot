@@ -35,18 +35,13 @@ wrapper(opendir, DIR*, (const char* name))
     }
     size_t num;
     struct dirent_obj* tmp = NULL;
+    //this part may has issue
     DIR* dirp = getDirents(name, &tmp, &num);
     if(pathExcluded(name)){
         darr = tmp;
         return dirp;
     }
     darr = WRAPPER_FUFS(opendir,opendir,name)
-   /**
-    while(darr){
-        debug("dirents item: %s", darr->abs_path);
-        darr = darr->next;
-    }
-    **/
     return dirp;
 }
 

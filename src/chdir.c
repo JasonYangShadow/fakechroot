@@ -56,12 +56,21 @@ wrapper(chdir, int, (const char * path))
     char resolved[MAX_PATH];
     rel2absLayer(path, resolved);
 
+    if(pathExcluded(path)){
+        return nextcall(chdir)(resolved);
+    }
+
     if(xstat(path) && is_file_type(resolved,TYPE_LINK)){
         char link[FAKECHROOT_PATH_MAX];
         if(resolveSymlink(resolved,link)){
             debug("chdir %s",link);
             return nextcall(chdir)(link);
         }
+    }
+    if(!is_inside_container(resolved)){
+        debug("chdir %s escapes from container, we have to fix it by force");
+        const char * container_root = getenv("ContainerRoot");
+        strcpy(resolved, container_root);
     }
     debug("chdir %s",resolved);
     return nextcall(chdir)(resolved);

@@ -29,16 +29,5 @@ wrapper(mkdir, int, (const char *pathname, mode_t mode))
 {
     debug("mkdir(\"%s\", 0%o)", pathname, mode);
     expand_chroot_path(pathname);
-
-
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
-    if (r && rt_paths){
-      return WRAPPER_FUFS(mkdir,mkdir,rt_paths[0],mode)
-    }else if(r && !rt_paths){
-      return WRAPPER_FUFS(mkdir,mkdir,pathname,mode)
-    }else {
-      errno = EACCES;
-      return -1;
-    }
+    return WRAPPER_FUFS(mkdir,mkdir,pathname,mode)
 }

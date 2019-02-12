@@ -32,15 +32,12 @@ wrapper(unlinkat, int, (int dirfd, const char * pathname, int flags))
     debug("unlinkat(%d, \"%s\", %d)", dirfd, pathname, flags);
     expand_chroot_path_at(dirfd, pathname);
     
-    char** rt_paths = NULL;
-    bool r = rt_mem_check(1, rt_paths, pathname);
+    char** rt_paths;
+    bool r = rt_mem_check("unlinkat", 1, &rt_paths, pathname);
     if (r && rt_paths){
-      return WRAPPER_FUFS(unlink,unlinkat,dirfd,rt_paths[0],flags)
-    }else if(r && !rt_paths){
-      return WRAPPER_FUFS(unlink,unlinkat,dirfd,pathname,flags)
+      return nextcall(unlinkat)(dirfd, rt_paths[0], flags);
     }else {
-      errno = EACCES;
-      return -1;
+      return WRAPPER_FUFS(unlink,unlinkat,dirfd,pathname,flags)
     }
 }
 

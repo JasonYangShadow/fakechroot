@@ -16,14 +16,16 @@ DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
         INITIAL_SYS(readdir)
+        INITIAL_SYS(readdir64)
 
         DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
+    struct dirent64* entry64 =NULL;
     struct dirent_obj* curr = NULL;
     *darr = NULL;
     *num = 0;
     while (entry = real_readdir(dirp)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
@@ -44,6 +46,19 @@ DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
         }
         (*num)++;
     }
+
+    //dirent64 read
+    rewinddir(dirp);
+    curr = *darr;
+    while(entry64 = real_readdir64(dirp)){
+        if(is_container_root(name) && (strcmp(entry64->d_name, ".") ==0 || strcmp(entry64->d_name,"..") == 0)){
+            continue;
+        }
+        if(curr){
+            curr->dp64 = entry64;
+            curr = curr->next;
+        }
+    }
     return dirp;
 }
 
@@ -52,15 +67,17 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
 
     INITIAL_SYS(opendir)
         INITIAL_SYS(readdir)
+        INITIAL_SYS(readdir64)
 
         DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
+    struct dirent64* entry64 = NULL;
     struct dirent_obj* curr = NULL;
     *names = (char*)malloc(MAX_VALUE_SIZE);
     *darr = NULL;
     *num = 0;
-    while (entry = real_readdir(dirp)) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+    while (entry = real_readdir(dirp)){
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
@@ -83,6 +100,20 @@ DIR* getDirentsWithName(const char* name, struct dirent_obj** darr, size_t* num,
         }
         (*num)++;
     }
+
+    //dirent64 read
+    rewinddir(dirp);
+    curr = *darr;
+    while(entry64 = real_readdir64(dirp)){
+        if(is_container_root(name) && (strcmp(entry64->d_name, ".") ==0 || strcmp(entry64->d_name,"..") == 0)){
+            continue;
+        }
+        if(curr){
+            curr->dp64 = entry64;
+            curr = curr->next;
+        }
+    }
+
     return dirp;
 }
 
@@ -95,7 +126,7 @@ void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
     *names = (char **)malloc(sizeof(char *)*MAX_VALUE_SIZE);
     *num = 0;
     while(entry = real_readdir(dirp)){
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         (*names)[*num] = strdup(entry->d_name);
@@ -266,6 +297,17 @@ void addItemToHead(struct dirent_obj** darr, struct dirent* item)
     *darr = curr;
 }
 
+void addItemToHeadV64(struct dirent_obj** darr, struct dirent64* item)
+{
+    if (*darr == NULL || item == NULL) {
+        return;
+    }
+    struct dirent_obj* curr = (struct dirent_obj*)malloc(sizeof(struct dirent_obj));
+    curr->dp64 = item;
+    curr->next = *darr;
+    *darr = curr;
+}
+
 struct dirent* popItemFromHead(struct dirent_obj** darr)
 {
     if (*darr == NULL) {
@@ -275,6 +317,19 @@ struct dirent* popItemFromHead(struct dirent_obj** darr)
     if (curr != NULL) {
         *darr = curr->next;
         return curr->dp;
+    }
+    return NULL;
+}
+
+struct dirent64* popItemFromHeadV64(struct dirent_obj** darr)
+{
+    if (*darr == NULL) {
+        return NULL;
+    }
+    struct dirent_obj* curr = *darr;
+    if (curr != NULL) {
+        *darr = curr->next;
+        return curr->dp64;
     }
     return NULL;
 }
@@ -711,9 +766,9 @@ bool copyFile2RW(const char *abs_path, char *resolved){
     }
 
     INITIAL_SYS(fopen)
-        INITIAL_SYS(mkdir)
+    INITIAL_SYS(mkdir)
 
-        char rel_path[MAX_PATH];
+    char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
     const char * container_root = getenv("ContainerRoot");
@@ -840,11 +895,7 @@ int recurMkdir(const char *path){
     if(!xstat(dname)){
         INITIAL_SYS(mkdir)
             log_debug("start creating dir %s", dname);
-        int ret = real_mkdir(dname, FOLDER_PERM);
-        if(ret != 0){
-            log_fatal("creating dirs %s encounters failure with error %s", dname, strerror(errno));
-            return -1;
-        }
+        real_mkdir(dname, FOLDER_PERM);
     }
     return 0;
 }
@@ -870,7 +921,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            log_debug("start creating dir %s", path);
+        log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -968,6 +1019,40 @@ bool resolveSymlink(const char *link, char *target){
     }
 }
 
+bool is_container_root(const char *abs_path){
+    if(abs_path == NULL || *abs_path == '\0'){
+        return false;
+    }
+    if(*abs_path != '/'){
+        log_error("input path should be absolute path rather than relative path");
+        return false;
+    }
+    char rel_path[MAX_PATH];
+    char layer_path[MAX_PATH];
+    int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
+    if(ret == 0 && strcmp(rel_path, ".") == 0){
+        return true;
+    }
+    return false;
+}
+
+bool is_inside_container(const char *abs_path){
+    if(abs_path == NULL || *abs_path == '\0'){
+        return false;
+    }
+    if(*abs_path != '/'){
+        log_error("input path should be absolute path rather than relative path");
+        return false;
+    }
+    char rel_path[MAX_PATH];
+    char layer_path[MAX_PATH];
+    int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
+    if(ret == 0){
+        return true;
+    }
+    return false;
+}
+
 bool pathIncluded(const char *abs_path){
     if(abs_path == NULL || *abs_path == '\0'){
         return false;
@@ -1015,6 +1100,8 @@ int fufs_open_impl(const char* function, ...){
         INITIAL_SYS(open64)
         INITIAL_SYS(openat64)
 
+    char destpath[MAX_PATH];
+    strcpy(destpath, path);
         //not exists or excluded directly calling real open
         if(!xstat(path) || pathExcluded(path)){
             if(oflag & O_DIRECTORY){
@@ -1025,7 +1112,7 @@ int fufs_open_impl(const char* function, ...){
             //if it exists, then copy and write
             char rel_path[MAX_PATH];
             char layer_path[MAX_PATH];
-            int ret = get_relative_path_layer(path, rel_path, layer_path);
+            int ret = get_relative_path_layer(destpath, rel_path, layer_path);
             if(ret == 0){
                 const char * container_root = getenv("ContainerRoot");
                 if(strcmp(layer_path,container_root) == 0){
@@ -1043,38 +1130,53 @@ int fufs_open_impl(const char* function, ...){
                         goto end_file;
                     }
 
+                    //check if it is symlink
+                    if(is_file_type(path, TYPE_LINK)){
+                        char link[MAX_PATH];
+                        if(readlink(path, link, MAX_PATH) != -1){
+                            if(link[0] != '/'){
+                                char dir[MAX_PATH], dest[MAX_PATH];
+                                strcpy(dir, path);
+                                dirname(dir);
+                                sprintf(dest, "%s/%s", dir, link);
+                                memset(destpath,'\0',MAX_PATH);
+                                if(!copyFile2RW(dest, destpath)){
+                                    log_fatal("copy from %s to %s encounters error", dest, destpath);
+                                    return -1;
+                                }
+                                dedotdot(destpath);
+                                goto end;
+                            }else{
+                                memset(destpath,'\0',MAX_PATH);
+                                if(!copyFile2RW(link, destpath)){
+                                    log_fatal("copy from %s to %s encounters error", link, destpath);
+                                    return -1;
+                                }
+                                goto end;
+                            }
+                        }
+                    }
+
                     //copy and write
-                    char destpath[MAX_PATH];
+                    memset(destpath,'\0',MAX_PATH);
                     if(!copyFile2RW(path, destpath)){
                         log_fatal("copy from %s to %s encounters error", path, destpath);
                         return -1;
                     }
-                    if(strcmp(function,"openat") == 0){
-                        return RETURN_SYS(openat,(dirfd,destpath,oflag,mode))
-                    }
-                    if(strcmp(function,"open") == 0){
-                        return RETURN_SYS(open,(destpath,oflag,mode))
-                    }
-                    if(strcmp(function,"openat64") == 0){
-                        return RETURN_SYS(openat64,(dirfd,destpath,oflag,mode))
-                    }
-                    if(strcmp(function,"open64") == 0){
-                        return RETURN_SYS(open64,(destpath,oflag,mode))
-                    }
-                    goto err;
+                    goto end;
                 }
             }else{
-                log_fatal("%s file doesn't exist in container", path);
+                log_fatal("%s file doesn't exist in container", destpath);
                 return -1;
             }
         }
 
 end_folder:
-    if(!xstat(path)){
+    if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
-            int ret = recurMkdirMode(path,FOLDER_PERM);
+        int ret = recurMkdirMode(destpath,FOLDER_PERM);
         if(ret != 0){
-            log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
+            log_fatal("creating dirs %s encounters failure with error %s", destpath, strerror(errno));
             return -1;
         }
     }
@@ -1082,10 +1184,10 @@ end_folder:
 
 
 end_file:
-    if(!xstat(path)){
+    if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
-            char dname[MAX_PATH];
-        strcpy(dname,path);
+        char dname[MAX_PATH];
+        strcpy(dname,destpath);
         dirname(dname);
         int ret = recurMkdirMode(dname,FOLDER_PERM);
         if(ret != 0){
@@ -1097,16 +1199,16 @@ end_file:
 
 end:
     if(strcmp(function,"openat") == 0){
-        return RETURN_SYS(openat,(dirfd,path,oflag,mode))
+        return RETURN_SYS(openat,(dirfd,destpath,oflag,mode))
     }
     if(strcmp(function,"open") == 0){
-        return RETURN_SYS(open,(path,oflag,mode))
+        return RETURN_SYS(open,(destpath,oflag,mode))
     }
     if(strcmp(function,"openat64") == 0){
-        return RETURN_SYS(openat64,(dirfd,path,oflag,mode))
+        return RETURN_SYS(openat64,(dirfd,destpath,oflag,mode))
     }
     if(strcmp(function,"open64") == 0){
-        return RETURN_SYS(open64,(path,oflag,mode))
+        return RETURN_SYS(open64,(destpath,oflag,mode))
     }
 
 err:
@@ -1179,11 +1281,7 @@ FILE* fufs_fopen_impl(const char * function, ...){
 end:
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            int ret = recurMkdir(path);
-        if(ret != 0){
-            log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
-            return NULL;
-        }
+            recurMkdir(path);
     }
 
     if(strcmp(function,"fopen") == 0){
@@ -1332,16 +1430,11 @@ end:
     }
 }
 
-struct dirent_obj* fufs_opendir_impl(const char* function,...){
-    //container layer from top to lower
-    va_list args;
-    va_start(args,function);
-    const char * abs_path = va_arg(args,const char *);
-    va_end(args);
-
-    size_t num;
-    char ** layers = getLayerPaths(&num);
-    if(num < 1){
+//this function scans content of given directory, and returns its content without whiteouted files
+struct dirent_obj* scanDir(const char *path, int *num, bool v64){
+    size_t layer_num;
+    char ** layers = getLayerPaths(&layer_num);
+    if(layer_num < 1){
         log_fatal("can't find layer info");
         return NULL;
     }
@@ -1355,13 +1448,13 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
 
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
-    int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
+    int ret = get_relative_path_layer(path, rel_path, layer_path);
     if (ret == -1) {
-        log_fatal("%s is not inside the container, abs path: %s", rel_path, abs_path);
+        log_fatal("%s is not inside the container, abs path: %s", rel_path, path);
         return NULL;
     }
 
-    for (int i = 0; i < num; i++) {
+    for (int i = 0; i < layer_num; i++) {
         char each_layer_path[MAX_PATH];
         sprintf(each_layer_path, "%s/%s", layers[i], rel_path);
         log_debug("preparing for accessing target layer: %s", each_layer_path);
@@ -1375,15 +1468,15 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
                     head = tail = entry->data;
                     if(head){
                         while (tail->next != NULL) {
-                            //log_debug("item added to dirent_map %s", tail->d_name);
+                            log_debug("item added to dirent_map %s", tail->d_name);
                             add_item_hmap(dirent_map, tail->d_name, NULL);
                             tail = tail->next;
                         }
-                        //log_debug("item added to dirent_map %s", tail->d_name);
+                        log_debug("item added to dirent_map %s", tail->d_name);
                         add_item_hmap(dirent_map, tail->d_name, NULL);
                     }
                     for (size_t wh_i = 0; wh_i < entry->wh_masked_num; wh_i++) {
-                        //log_debug("item added to wh_map %s", entry->wh_masked[wh_i]);
+                        log_debug("item added to wh_map %s", entry->wh_masked[wh_i]);
                         add_item_hmap(wh_map, entry->wh_masked[wh_i], NULL);
                     }
                 } else {
@@ -1412,10 +1505,10 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
                     }
                     while (tail->next != NULL) {
                         if (!contain_item_hmap(dirent_map, tail->d_name) && !contain_item_hmap(wh_map, tail->d_name)) {
-                            //log_debug("item added to dirent_map %s", tail->d_name);
+                            log_debug("item added to dirent_map %s", tail->d_name);
                             add_item_hmap(dirent_map, tail->d_name, NULL);
                         } else {
-                            //log_debug("item deteled from dirent_map %s", tail->d_name);
+                            log_debug("item deteled from dirent_map %s", tail->d_name);
                             deleteItemInChainByPointer(&head, &tail);
                             if (!tail) {
                                 tail = prew;
@@ -1426,10 +1519,10 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
                         tail = tail->next;
                     }
                     if (!contain_item_hmap(dirent_map, tail->d_name) && !contain_item_hmap(wh_map, tail->d_name)) {
-                        //log_debug("item added to dirent_map %s", tail->d_name);
+                        log_debug("item added to dirent_map %s", tail->d_name);
                         add_item_hmap(dirent_map, tail->d_name, NULL);
                     } else {
-                        //log_debug("item deteled from dirent_map %s", tail->d_name);
+                        log_debug("item deteled from dirent_map %s", tail->d_name);
                         deleteItemInChainByPointer(&head, &tail);
                         if (!tail) {
                             //reset tail to its previous item if tail is NULL
@@ -1440,7 +1533,7 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
 
 ends:
                     for (size_t wh_i = 0; wh_i < entry->wh_masked_num; wh_i++) {
-                        //log_debug("item added to wh_map %s", entry->wh_masked[wh_i]);
+                        log_debug("item added to wh_map %s", entry->wh_masked[wh_i]);
                         add_item_hmap(wh_map, entry->wh_masked[wh_i], NULL);
                     }
                 }
@@ -1461,7 +1554,25 @@ ends:
         destroy_hmap(wh_map);
     }
 
+    *num = 0;
+    struct dirent_obj *loop = head;
+    while(loop != NULL){
+        *num++;
+        loop = loop->next;
+    }
     return head;
+}
+
+struct dirent_obj* fufs_opendir_impl(const char* function,...){
+    //container layer from top to lower
+    va_list args;
+    va_start(args,function);
+    const char * abs_path = va_arg(args,const char *);
+    va_end(args);
+
+    int num;
+    struct dirent_obj* ret = scanDir(abs_path, &num, false);
+    return ret;
 }
 
 int fufs_mkdir_impl(const char* function,...){
@@ -1593,9 +1704,9 @@ int fufs_symlink_impl(const char *function, ...){
     }
 
     INITIAL_SYS(symlinkat)
-    INITIAL_SYS(symlink)
+        INITIAL_SYS(symlink)
 
-    char dir[MAX_PATH];
+        char dir[MAX_PATH];
     strcpy(dir, resolved);
     dirname(dir);
     //parent folder does not exist
@@ -1677,20 +1788,35 @@ int fufs_chmod_impl(const char* function, ...){
     }
 
     INITIAL_SYS(chmod)
-    INITIAL_SYS(lchmod)
-    INITIAL_SYS(fchmodat)
+        INITIAL_SYS(lchmod)
+        INITIAL_SYS(fchmodat)
 
-    char resolved[MAX_PATH];
+        char resolved[MAX_PATH];
     const char * container_root = getenv("ContainerRoot");
     if(strcmp(layer_path,container_root) == 0){
         strcpy(resolved, path);
     }else{
-        if(!copyFile2RW(path, resolved)){
-            log_fatal("copy from %s to %s encounters error", path, resolved);
-            return -1;
+        if(is_file_type(path, TYPE_DIR)){
+            const char * container_root = getenv("ContainerRoot");
+            char newpath[MAX_PATH];
+            sprintf(newpath,"%s/%s", container_root, rel_path);
+            if(!xstat(newpath)){
+                recurMkdirMode(newpath, FOLDER_PERM);
+            }
+            strcpy(resolved, newpath);
+            goto end;
+        }
+
+        if(is_file_type(path, TYPE_FILE) || is_file_type(path, TYPE_LINK)){
+            if(!copyFile2RW(path, resolved)){
+                log_fatal("copy from %s to %s encounters error", path, resolved);
+                return -1;
+            }
+            goto end;
         }
     }
 
+end:
     if(strcmp(function, "chmod") == 0){
         return RETURN_SYS(chmod,(resolved, mode))
     }
@@ -1726,8 +1852,16 @@ int fufs_rmdir_impl(const char* function, ...){
     strcpy(dname, rel_path);
     dirname(dname);
     if(strcmp(layer_path,container_root) == 0){
+        //two cases
+        //1. folder does not exist in another other layers, then delete it directly
+        //2. folder exists in other layers, create wh and check all content inside is wh files, clear them
         INITIAL_SYS(rmdir)
-            char wh[MAX_PATH];
+            char layers_resolved[MAX_PATH];
+        if(!findFileInLayersSkip(path, layers_resolved, 1)){
+            goto end;
+        }
+
+        char wh[MAX_PATH];
         sprintf(wh,"%s/%s/.wh.%s",container_root,dname,bname);
 
         char wh_dname[MAX_PATH];
@@ -1771,8 +1905,11 @@ int fufs_rmdir_impl(const char* function, ...){
                 }
             }
         }
+
+end:
         return RETURN_SYS(rmdir,(path))
     }else{
+        //in other layers
         char new_path[MAX_PATH];
         sprintf(new_path,"%s/%s", container_root,rel_path);
         int ret = recurMkdirMode(new_path,FOLDER_PERM);
