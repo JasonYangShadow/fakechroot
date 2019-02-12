@@ -25,8 +25,8 @@ RUN cd /data/msgpack && cmake . && make && make install
 
 #step 2: compile fakechroot
 RUN git clone https://github.com/JasonYangShadow/fakechroot /data/fakechroot
-RUN cd /data/fakechroot && ./autogen.sh && ./configure && make
+RUN cd /data/fakechroot && ./autogen.sh && ./configure CFLAGS="-std=gnu99" && make
 
 #step 3: copy files to shared folder
-COPY /tmp/fakechroot/src/.libs/libfakechroot.so /data/libfakechroot.so
-COPY /usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so /data/libfakeroot.so
+RUN cp /data/fakechroot/src/.libs/libfakechroot.so /data/libfakechroot.so
+RUN cp /usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so /data/libfakeroot.so

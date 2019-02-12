@@ -766,9 +766,9 @@ bool copyFile2RW(const char *abs_path, char *resolved){
     }
 
     INITIAL_SYS(fopen)
-    INITIAL_SYS(mkdir)
+        INITIAL_SYS(mkdir)
 
-    char rel_path[MAX_PATH];
+        char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
     const char * container_root = getenv("ContainerRoot");
@@ -921,7 +921,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-        log_debug("start creating dir %s", path);
+            log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -1100,81 +1100,83 @@ int fufs_open_impl(const char* function, ...){
         INITIAL_SYS(open64)
         INITIAL_SYS(openat64)
 
-    char destpath[MAX_PATH];
+        char destpath[MAX_PATH];
     strcpy(destpath, path);
-        //not exists or excluded directly calling real open
-        if(!xstat(path) || pathExcluded(path)){
-            if(oflag & O_DIRECTORY){
-                goto end_folder;
-            }
-            goto end_file;
-        }else{
-            //if it exists, then copy and write
-            char rel_path[MAX_PATH];
-            char layer_path[MAX_PATH];
-            int ret = get_relative_path_layer(destpath, rel_path, layer_path);
-            if(ret == 0){
-                const char * container_root = getenv("ContainerRoot");
-                if(strcmp(layer_path,container_root) == 0){
-                    if(oflag & O_DIRECTORY){
-                        goto end_folder;
-                    }
+    //not exists or excluded directly calling real open
+    if(!xstat(path) || pathExcluded(path)){
+        if(oflag & O_DIRECTORY){
+            goto end_folder;
+        }
+        goto end_file;
+    }else{
+        //if it exists, then copy and write
+        char rel_path[MAX_PATH];
+        char layer_path[MAX_PATH];
+        int ret = get_relative_path_layer(destpath, rel_path, layer_path);
+        if(ret == 0){
+            const char * container_root = getenv("ContainerRoot");
+            if(strcmp(layer_path,container_root) == 0){
+                if(oflag & O_DIRECTORY){
+                    goto end_folder;
+                }
+                goto end_file;
+            }else{
+                if((oflag & O_DIRECTORY) || (xstat(path) && is_file_type(path,TYPE_DIR))){
+                    goto end_folder;
+                }
+
+                //read only
+                if(oflag == 0){
                     goto end_file;
-                }else{
-                    if(oflag & O_DIRECTORY || (xstat(path) && is_file_type(path,TYPE_DIR))){
-                        goto end_folder;
-                    }
+                }
 
-                    //read only
-                    if(oflag == 0){
-                        goto end_file;
-                    }
-
-                    //check if it is symlink
-                    if(is_file_type(path, TYPE_LINK)){
-                        char link[MAX_PATH];
-                        if(readlink(path, link, MAX_PATH) != -1){
-                            if(link[0] != '/'){
-                                char dir[MAX_PATH], dest[MAX_PATH];
-                                strcpy(dir, path);
-                                dirname(dir);
-                                sprintf(dest, "%s/%s", dir, link);
-                                memset(destpath,'\0',MAX_PATH);
-                                if(!copyFile2RW(dest, destpath)){
-                                    log_fatal("copy from %s to %s encounters error", dest, destpath);
-                                    return -1;
-                                }
-                                dedotdot(destpath);
-                                goto end;
-                            }else{
-                                memset(destpath,'\0',MAX_PATH);
-                                if(!copyFile2RW(link, destpath)){
-                                    log_fatal("copy from %s to %s encounters error", link, destpath);
-                                    return -1;
-                                }
-                                goto end;
+                //check if it is symlink
+                if(is_file_type(path, TYPE_LINK)){
+                    char link[MAX_PATH];
+                    if(readlink(path, link, MAX_PATH) != -1){
+                        if(link[0] != '/'){
+                            char dir[MAX_PATH], dest[MAX_PATH];
+                            strcpy(dir, path);
+                            dirname(dir);
+                            sprintf(dest, "%s/%s", dir, link);
+                            memset(destpath,'\0',MAX_PATH);
+                            if(!copyFile2RW(dest, destpath)){
+                                log_fatal("copy from %s to %s encounters error", dest, destpath);
+                                return -1;
                             }
+                            dedotdot(destpath);
+                            goto end;
+                        }else{
+                            memset(destpath,'\0',MAX_PATH);
+                            if(!copyFile2RW(link, destpath)){
+                                log_fatal("copy from %s to %s encounters error", link, destpath);
+                                return -1;
+                            }
+                            goto end;
                         }
                     }
+                }
 
-                    //copy and write
+                //copy and write
+                if(xstat(path) && is_file_type(path, TYPE_FILE)){
                     memset(destpath,'\0',MAX_PATH);
                     if(!copyFile2RW(path, destpath)){
                         log_fatal("copy from %s to %s encounters error", path, destpath);
                         return -1;
                     }
-                    goto end;
                 }
-            }else{
-                log_fatal("%s file doesn't exist in container", destpath);
-                return -1;
+                goto end;
             }
+        }else{
+            log_fatal("%s file doesn't exist in container", destpath);
+            return -1;
         }
+    }
 
 end_folder:
     if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
-        int ret = recurMkdirMode(destpath,FOLDER_PERM);
+            int ret = recurMkdirMode(destpath,FOLDER_PERM);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", destpath, strerror(errno));
             return -1;
@@ -1186,7 +1188,7 @@ end_folder:
 end_file:
     if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
-        char dname[MAX_PATH];
+            char dname[MAX_PATH];
         strcpy(dname,destpath);
         dirname(dname);
         int ret = recurMkdirMode(dname,FOLDER_PERM);
