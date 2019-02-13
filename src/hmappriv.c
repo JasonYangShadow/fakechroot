@@ -84,7 +84,7 @@ bool rt_mem_con_check(const char* containerid, const char* function, int n, char
 
 //return: true -> should use replaced path rather than original one
 bool rt_mem_check(const char* function, int n, char*** rt_paths, ...){
-    char * check_switch = getenv("__PRIV_SWITCH");
+    char * check_switch = getenv("FAKECHROOT_PRIV_SWITCH");
     if(!check_switch){
         return false;
     }
