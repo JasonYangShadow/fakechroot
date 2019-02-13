@@ -27,7 +27,7 @@ then
     cp /usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so /tmp/libfakeroot.so
     cp /usr/lib/x86_64-linux-gnu/libmemcached.so.11 /tmp/libmemcached.so.11
     cp /usr/lib/x86_64-linux-gnu/libsasl2.so.2 /tmp/libsasl2.so.2
-    cp /usr/lib/x86_64-linux-gnu/libevent-2.0.so.6 /tmp/libevent.so
+    cp /usr/lib/x86_64-linux-gnu/libevent-2.1.so.6 /tmp/libevent.so
     cp /usr/bin/faked-sysv /tmp/faked-sysv
 else 
     echo "Your system type is $os, this script is used for 'ubuntu' or 'debian' like systems"
