@@ -19,7 +19,7 @@ function getLibrary()
 
 PREFIX=/tmp
 #step 1 installing necessary packages
-sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+sudo yum install \
     git \
     autoconf \
     automake \
