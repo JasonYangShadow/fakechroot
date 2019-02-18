@@ -31,7 +31,8 @@ sudo yum install \
     libtool \
     fakeroot \
     libssl-dev \
-    memcached
+    memcached \
+    gcc-c++
 
 #step 2 turn off git ssl verification
 git config --global http.sslVerify false
