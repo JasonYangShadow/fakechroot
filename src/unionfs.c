@@ -477,6 +477,7 @@ int get_relative_path_layer(const char *path, char * rel_path, char * layer_path
         for(size_t j =0;j<num;j++){
             free(layers[j]);
         }
+        free(layers);
     }
     return -1;
 }
@@ -647,15 +648,15 @@ bool findFileInLayers(const char *file,char *resolved){
                     }
                     if(getParentWh(tmp)){
                         strcpy(resolved,file);
-                        return false;
+                        goto frelease;
                     }
                     if(xstat(tmp)){
                         strcpy(resolved,tmp);
-                        return true;
+                        goto trelease;
                     }
                     if(strcmp(layer_path, layers[i]) == 0){
                         strcpy(resolved,file);
-                        return false;
+                        goto frelease;
                     }
                 }
             }else{
@@ -664,11 +665,11 @@ bool findFileInLayers(const char *file,char *resolved){
                     sprintf(tmp,"%s%s",layers[i],file);
                     if(getParentWh(tmp)){
                         strcpy(resolved,file);
-                        return false;
+                        goto frelease;
                     }
                     if(xstat(tmp)){
                         strcpy(resolved,tmp);
-                        return true;
+                        goto trelease;
                     }
                 }
             }
@@ -678,17 +679,35 @@ bool findFileInLayers(const char *file,char *resolved){
                 sprintf(tmp,"%s/%s",layers[i],file);
                 if(getParentWh(tmp)){
                     strcpy(resolved,file);
-                    return false;
+                    goto frelease;
                 }
                 if(xstat(tmp)){
                     strcpy(resolved,tmp);
-                    return true;
+                    goto trelease;
                 }
             }
         }
     }
     strcpy(resolved,file);
+    goto frelease;
+
+frelease:
+    if(layers){
+        for(int i = 0; i < num; i++){
+            free(layers[i]);
+        }
+        free(layers);
+    }
     return false;
+
+trelease:
+    if(layers){
+        for(int i = 0; i < num; i++){
+            free(layers[i]);
+        }
+        free(layers);
+    }
+    return true;
 }
 
 bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
@@ -709,15 +728,15 @@ bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
                     }
                     if(getParentWh(tmp)){
                         strcpy(resolved,file);
-                        return false;
+                        goto frelease;
                     }
                     if(xstat(tmp)){
                         strcpy(resolved,tmp);
-                        return true;
+                        goto trelease;
                     }
                     if(strcmp(layer_path, layers[i]) == 0){
                         strcpy(resolved,file);
-                        return false;
+                        goto frelease;
                     }
                 }
             }else{
@@ -726,11 +745,11 @@ bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
                     sprintf(tmp,"%s%s",layers[i],file);
                     if(getParentWh(tmp)){
                         strcpy(resolved,file);
-                        return false;
+                        goto frelease;
                     }
                     if(xstat(tmp)){
                         strcpy(resolved,tmp);
-                        return true;
+                        goto trelease;
                     }
                 }
             }
@@ -740,17 +759,38 @@ bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
                 sprintf(tmp,"%s/%s",layers[i],file);
                 if(getParentWh(tmp)){
                     strcpy(resolved,file);
-                    return false;
+                    goto frelease;
                 }
                 if(xstat(tmp)){
                     strcpy(resolved,tmp);
-                    return true;
+                    goto trelease;
                 }
             }
         }
     }
+
+
     strcpy(resolved,file);
+    goto frelease;
+
+frelease:
+    if(layers){
+        for(int i = 0; i < num; i++){
+            free(layers[i]);
+        }
+        free(layers);
+    }
     return false;
+
+trelease:
+    if(layers){
+        for(int i = 0; i < num; i++){
+            free(layers[i]);
+        }
+        free(layers);
+    }
+    return true;
+
 }
 
 //copy file to rw layers
@@ -939,6 +979,14 @@ bool pathExcluded(const char *abs_path){
         log_error("input path should be absolute path rather than relative path: %s",abs_path);
         return false;
     }
+
+    const char* data_sync = getenv("FAKECHROOT_DATA_SYNC");
+    if(data_sync){
+        if(strncmp(data_sync, abs_path, strlen(data_sync)) == 0){
+            return true;
+        }
+    }
+
     const char *exclude_path = getenv("FAKECHROOT_EXCLUDE_PATH");
     if(exclude_path){
         char exclude_path_dup[MAX_PATH];
@@ -998,6 +1046,12 @@ bool resolveSymlink(const char *link, char *target){
                         }
 
                     }
+                }
+                if(paths){
+                    for(int i = 0; i < num; i++){
+                        free(paths[i]);
+                    }
+                    free(paths);
                 }
                 if(!b_resolved){
                     const char * container_root = getenv("ContainerRoot");
@@ -1356,6 +1410,14 @@ int fufs_unlink_impl(const char* function,...){
                         real_unlink(tmp);
                     }
                 }
+
+                //clean up
+                if(names){
+                    for(int i = 0; i < num; i++){
+                        free(names[i]);
+                    }
+                    free(names);
+                }
             }
 
             char rel_path[MAX_PATH];
@@ -1368,9 +1430,14 @@ int fufs_unlink_impl(const char* function,...){
             const char * root_path = getenv("ContainerRoot");
 
             char * bname = basename(rel_path);
-            char dname[MAX_PATH];
+            char dname[MAX_PATH], dname_cp[MAX_PATH];
             strcpy(dname, rel_path);
+            strcpy(dname_cp, rel_path);
             dirname(dname);
+            //fix bug that could not remove folders inside root folder
+            if(strcmp(dname, dname_cp) == 0){
+                strcpy(dname,".");
+            }
 
             //if remove .wh file
             if(strncmp(bname,".wh",3) == 0){
@@ -1380,7 +1447,7 @@ int fufs_unlink_impl(const char* function,...){
 
             INITIAL_SYS(creat)
                 if(strcmp(root_path, layer_path) == 0){
-                    //if file does not exist in other lyaers, then we directly delete them
+                    //if file does not exist in other layers, then we directly delete them
                     char layers_resolved[MAX_PATH];
                     if(!findFileInLayersSkip(abs_path, layers_resolved, 1)){
                         goto end;
@@ -1554,6 +1621,12 @@ ends:
     }
     if(wh_map){
         destroy_hmap(wh_map);
+    }
+    if(layers){
+        for(int i = 0; i < layer_num; i++){
+            free(layers[i]);
+        }
+        free(layers);
     }
 
     *num = 0;
@@ -1905,6 +1978,14 @@ int fufs_rmdir_impl(const char* function, ...){
                     log_debug("all files in folder: %s are whiteout files, delete target item: %s",path, tmp);
                     real_unlink(tmp);
                 }
+            }
+
+            //clean up
+            if(names){
+                for(int i = 0; i < num; i++){
+                    free(names[i]);
+                }
+                free(names);
             }
         }
 
