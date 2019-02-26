@@ -38,6 +38,10 @@ wrapper(scandir64, int, (const char * dir, struct dirent64 *** namelist, SCANDIR
     debug("scandir64(\"%s\", &namelist, &filter, &compar)", dir);
     expand_chroot_path(dir);
 
+    if(pathExcluded(dir)){
+        return nextcall(scandir64)(dir, namelist, filter, compar);
+    }
+
     int num;
     struct dirent_obj* ret = scanDir(dir, &num, true);
     if(num > 0 && ret != NULL){

@@ -36,6 +36,10 @@ wrapper(scandir, int, (const char * dir, struct dirent *** namelist, SCANDIR_TYP
     debug("scandir(\"%s\", &namelist, &filter, &compar)", dir);
     expand_chroot_path(dir);
 
+    if(pathExcluded(dir)){
+        return nextcall(scandir)(dir, namelist, filter, compar);
+    }
+
     int num;
     struct dirent_obj* ret = scanDir(dir, &num, false);
     if(num > 0 && ret != NULL){

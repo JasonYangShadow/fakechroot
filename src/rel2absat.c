@@ -261,6 +261,13 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     }
 
     dedotdot(resolved);
+    if(pathExcluded(resolved)){
+        goto end;
+    }
+    if(!is_inside_container(resolved)){
+        debug("rel2absatLayer path: %s escape from container, we have to fix it by force", resolved);
+        strcpy(resolved, container_root);
+    }
 
 end:
     dedotdot(resolved);

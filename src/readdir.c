@@ -21,6 +21,8 @@
 #include <config.h>
 
 #ifdef HAVE_READDIR
+
+#define _LARGEFILE64_SOURCE
 #include <dirent.h>
 #include "libfakechroot.h"
 #include "unionfs.h"

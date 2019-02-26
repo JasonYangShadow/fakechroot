@@ -18,15 +18,18 @@ function getLibrary()
 }
 
 PREFIX=/tmp
+AUTOCONF=autoconf
+LIBMEM=libmemcached
 #step 1 installing necessary packages
+sudo yum install epel-release
+
 sudo yum install \
     git \
-    autoconf \
+    wget \
     automake \
     make \
     gcc \
     g++ \
-    libmemcached-dev \
     cmake \
     libtool \
     fakeroot \
@@ -37,13 +40,25 @@ sudo yum install \
 #step 2 turn off git ssl verification
 git config --global http.sslVerify false
 
+#step 2.1 build system initialization
+wget -O "$PREFIX/$AUTOCONF.tar.gz" https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+mkdir -p "$PREFIX/$AUTOCONF"
+tar xzvf "$PREFIX/$AUTOCONF.tar.gz" -C "$PREFIX/$AUTOCONF" --strip-components=1 && cd "$PREFIX/$AUTOCONF"
+./configure && make && sudo make install
+
+#step 2.2 build libmemcached
+wget -O "$PREFIX/$LIBMEM.tar.gz" https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz
+mkdir -p "$PREFIX/$LIBMEM"
+tar xzvf "$PREFIX/$LIBMEM.tar.gz" -C "$PREFIX/$LIBMEM" --strip-components=1 && cd "$PREFIX/$LIBMEM"
+./configure && make && sudo make install
+
 #step 3 download and compile msgpack locally
 git clone https://github.com/msgpack/msgpack-c.git "$PREFIX"/msgpack
 cd "$PREFIX"/msgpack && cmake . && make && sudo make install
 
 #step 4 download and compile fakechroot
 git clone https://github.com/JasonYangShadow/fakechroot "$PREFIX"/fakechroot
-cd "$PREFIX"/fakechroot && ./autogen.sh && ./configure && make
+cd "$PREFIX"/fakechroot && ./autogen.sh && ./configure CFLAGS="-std=gnu99" && make
 
 #step 5 copy libraries
 libfchroot="$PREFIX"/libfakechroot.so
@@ -82,7 +97,7 @@ else
     fi
 fi
 
-cp /usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so "$PREFIX"/libfakeroot.so
+cp /usr/lib64/libfakeroot/libfakeroot-sysv.so "$PREFIX"/libfakeroot.so
 cp /usr/bin/faked-sysv /tmp/faked-sysv
 
 cd "$PREFIX"

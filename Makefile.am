@@ -11,4 +11,6 @@ prove: all
 test: all
 	cd test && $(MAKE) $(AM_MAKEFLAGS) test
 
-.PHONY: prove test
+version: all
+	echo `date +"%Y%m%d%H"` > VERSION
+.PHONY: prove test version
