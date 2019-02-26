@@ -18,6 +18,8 @@ function getLibrary()
 }
 
 PREFIX=/tmp
+AUTOCONF=autoconf
+LIBMEM=libmemcached
 #step 1 installing necessary packages
 sudo yum install \
     git \
@@ -54,7 +56,7 @@ cd "$PREFIX"/msgpack && cmake . && make && sudo make install
 
 #step 4 download and compile fakechroot
 git clone https://github.com/JasonYangShadow/fakechroot "$PREFIX"/fakechroot
-cd "$PREFIX"/fakechroot && ./autogen.sh && ./configure && make
+cd "$PREFIX"/fakechroot && ./autogen.sh && ./configure CFLAGS="-std=gnu99" && make
 
 #step 5 copy libraries
 libfchroot="$PREFIX"/libfakechroot.so
@@ -93,7 +95,7 @@ else
     fi
 fi
 
-cp /usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so "$PREFIX"/libfakeroot.so
+cp /usr/lib64/libfakeroot/libfakeroot-sysv.so "$PREFIX"/libfakeroot.so
 cp /usr/bin/faked-sysv /tmp/faked-sysv
 
 cd "$PREFIX"
