@@ -18,15 +18,16 @@ function getLibrary()
 }
 
 PREFIX=/tmp
+AUTOCONF=autoconf
+LIBMEM=libmemcached
 #step 1 installing necessary packages
 sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     git \
-    autoconf \
+    wget \
     automake \
     make \
     gcc \
     g++ \
-    libmemcached-dev \
     cmake \
     libtool \
     fakeroot \
@@ -35,6 +36,18 @@ sudo apt-get update && sudo apt-get install -y --no-install-recommends \
 
 #step 2 turn off git ssl verification
 git config --global http.sslVerify false
+
+#step 2.1 build system initialization
+wget -O "$PREFIX/$AUTOCONF.tar.gz" https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+mkdir -p "$PREFIX/$AUTOCONF"
+tar xzvf "$PREFIX/$AUTOCONF.tar.gz" -C "$PREFIX/$AUTOCONF" && cd "$PREFIX/$AUTOCONF"
+./configure && make && make install
+
+#step 2.2 build libmemcached
+wget -O "$PREFIX/$LIBMEM.tar.gz" https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz
+mkdir -p "$PREFIX/$LIBMEM"
+tar xzvf "$PREFIX/$LIBMEM.tar.gz" -C "$PREFIX/$LIBMEM" && cd "$PREFIX/$LIBMEM"
+./configure && make && make install
 
 #step 3 download and compile msgpack locally
 git clone https://github.com/msgpack/msgpack-c.git "$PREFIX"/msgpack
