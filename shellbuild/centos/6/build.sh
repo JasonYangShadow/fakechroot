@@ -21,6 +21,8 @@ PREFIX=/tmp
 AUTOCONF=autoconf
 LIBMEM=libmemcached
 #step 1 installing necessary packages
+sudo yum install epel-release
+
 sudo yum install \
     git \
     wget \
