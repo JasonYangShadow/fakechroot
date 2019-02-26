@@ -215,8 +215,6 @@ fakechroot_wrapperfn_t fakechroot_loadfunc (struct fakechroot_wrapper *);
 int fakechroot_localdir (const char *);
 int fakechroot_try_cmd_subst (char *, const char *, char *);
 
-bool b_parent_delete(int n, ...);
-int get_all_parents(const char * path, char ** parents, int * lengths, int *n);
 /* We don't want to define _BSD_SOURCE and _DEFAULT_SOURCE and include stdio.h */
 #ifndef snprintf
 int snprintf(char *, size_t, const char *, ...);
