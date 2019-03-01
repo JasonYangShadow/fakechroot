@@ -112,7 +112,8 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     }
 
     //preprocess name
-    char * name_dup = strdup(name);
+    char name_dup[FAKECHROOT_PATH_MAX];
+    strcpy(name_dup, name);
     dedotdot(name_dup);
 
     const char * container_root = getenv("ContainerRoot");

@@ -36,6 +36,9 @@ wrapper(readdir64, struct dirent64 *, (DIR * dirp))
         return entry64;
     }else{
         debug("default readdir64");
+        if(darr){
+            clearItems(&darr);
+        }
         return nextcall(readdir64)(dirp);
     }
 }

@@ -36,9 +36,8 @@ wrapper(opendir, DIR*, (const char* name))
     size_t num;
     struct dirent_obj* tmp = NULL;
     //this part may has issue
-    DIR* dirp = getDirents(name, &tmp, &num);
+    DIR* dirp = getDirents(name, &darr, &num);
     if(pathExcluded(name)){
-        darr = tmp;
         return dirp;
     }
     clearItems(&darr);

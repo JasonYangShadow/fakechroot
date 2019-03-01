@@ -36,6 +36,9 @@ wrapper(readdir, struct dirent *, (DIR * dirp))
         return entry;
     }else{
         debug("default readdir");
+        if(darr){
+            clearItems(&darr);
+        }
         return nextcall(readdir)(dirp);
     }
 }

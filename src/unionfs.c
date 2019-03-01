@@ -15,10 +15,10 @@
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
-        INITIAL_SYS(readdir64)
+    INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir64)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent64* entry64 =NULL;
     struct dirent_obj* curr = NULL;
