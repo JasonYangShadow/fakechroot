@@ -185,7 +185,8 @@ libfakechroot_la_SOURCES = \
 	readdir64.c \
 	unionfs.h \
 	unionfs.c \
-	fchdir.c
+	fchdir.c \
+	closedir.c
 libfakechroot_la_LDFLAGS = -avoid-version
 
 AM_CFLAGS = $(EXTRA_CFLAGS)

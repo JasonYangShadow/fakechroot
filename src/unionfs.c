@@ -236,7 +236,7 @@ void filterMemDirents(const char* name, struct dirent_obj* darr, size_t num)
 void deleteItemInChain(struct dirent_obj** darr, size_t num)
 {
     size_t i = 0;
-    struct dirent_obj *curr, *prew = *darr;
+    struct dirent_obj *curr=NULL, *prew = *darr;
     if (*darr == NULL) {
         return;
     }
@@ -316,7 +316,9 @@ struct dirent* popItemFromHead(struct dirent_obj** darr)
     struct dirent_obj* curr = *darr;
     if (curr != NULL) {
         *darr = curr->next;
-        return curr->dp;
+        struct dirent* ret = curr->dp;
+        free(curr);
+        return ret;
     }
     return NULL;
 }
@@ -329,7 +331,9 @@ struct dirent64* popItemFromHeadV64(struct dirent_obj** darr)
     struct dirent_obj* curr = *darr;
     if (curr != NULL) {
         *darr = curr->next;
-        return curr->dp64;
+        struct dirent64* ret = curr->dp64;
+        free(curr);
+        return ret;
     }
     return NULL;
 }
@@ -1607,6 +1611,10 @@ ends:
                     }
                 }
             } // exists data or white out files
+            if(entry){
+                free(entry->wh_masked);
+                free(entry);
+            }
         } // layer path exists
 
         //find if any whiteout parent folders exists

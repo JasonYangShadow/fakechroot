@@ -141,6 +141,12 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
                 if(!b_resolved){
                     snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",container_root,rel_path);
                 }
+                if(paths){
+                    for(size_t i = 0; i < num; i++){
+                        free(paths[i]);
+                    }
+                    free(paths);
+                }
             }
         }else{
             snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",cwd,name_dup);
