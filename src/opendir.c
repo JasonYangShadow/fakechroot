@@ -33,15 +33,23 @@ wrapper(opendir, DIR*, (const char* name))
         errno = ENOENT;
         return NULL;
     }
+
     size_t num;
-    struct dirent_obj* tmp = NULL;
-    //this part may has issue
+    struct dirent_obj* darr = NULL;
     DIR* dirp = getDirents(name, &darr, &num);
+    int fd = dirfd(dirp);
+    if(darr_list[fd] != NULL){
+        clearItems(&darr_list[fd]);
+    }
+
     if(pathExcluded(name)){
+        darr_list[fd] = darr;
         return dirp;
     }
+
     clearItems(&darr);
     darr = WRAPPER_FUFS(opendir,opendir,name)
+    darr_list[fd] = darr;
     return dirp;
 }
 

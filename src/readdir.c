@@ -21,25 +21,23 @@
 #include <config.h>
 
 #ifdef HAVE_READDIR
-
-#define _LARGEFILE64_SOURCE
 #include <dirent.h>
 #include "libfakechroot.h"
 #include "unionfs.h"
 
-extern struct dirent_obj * darr;
+extern struct dirent_obj* darr_list[MAX_ITEMS];
 wrapper(readdir, struct dirent *, (DIR * dirp))
 {
+    int fd = dirfd(dirp);
+    struct dirent_obj* darr = darr_list[fd];
     if(darr != NULL){
         struct dirent * entry = popItemFromHead(&darr);
         debug("readdir %s",entry->d_name);
+        darr_list[fd] = darr;
         return entry;
     }else{
         debug("default readdir");
-        if(darr){
-            clearItems(&darr);
-        }
-        return nextcall(readdir)(dirp);
+        return NULL;
     }
 }
 #else

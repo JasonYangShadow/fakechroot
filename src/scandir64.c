@@ -43,7 +43,7 @@ wrapper(scandir64, int, (const char * dir, struct dirent64 *** namelist, SCANDIR
     }
 
     int num;
-    struct dirent_obj* ret = scanDir(dir, &num, true);
+    struct dirent_obj* ret = listDir(dir, &num);
     if(num > 0 && ret != NULL){
         *namelist = (struct dirent64 **)malloc(sizeof(struct dirent64 *)*num);
         struct dirent_obj* loop = ret;

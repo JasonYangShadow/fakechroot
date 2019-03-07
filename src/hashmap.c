@@ -1,5 +1,4 @@
 #include "hashmap.h"
-#include "log.h"
 
 void add_item_list(const char* key, struct list_head* phead){
     struct list_item * item = (struct list_item*)malloc(sizeof(struct list_item));
@@ -76,6 +75,23 @@ int add_item_hmap(hmap_t* pmap, char* key, void* data){
     return n;
 }
 
+int add_update_item_hmap(hmap_t* pmap, char* key, void* data){
+    unsigned n = 0;
+    if(pmap){
+        ENTRY e, *ep;
+        e.key = key;
+        e.data = data;
+        if(!find_item_list(key, &pmap->head)){
+            add_item_list(key, &pmap->head);
+        }
+        n = hsearch_r(e, ENTER, &ep, &pmap->h_map);
+        if(n){
+            ep->data = e.data;
+        }
+    }
+    return n;
+}
+
 void* get_item_hmap(hmap_t* pmap, char* key){
     if(!pmap){
       return NULL;
@@ -93,8 +109,11 @@ void delete_item_hmap(hmap_t* pmap, char* key){
   if(pmap){
     ENTRY e, *ep;
     e.key = key;
-    if(hsearch_r(e, FIND, &ep, &pmap->h_map)){
-        delete_item_list(key,&pmap->head);
+    unsigned n = 0;
+    n = hsearch_r(e, ENTER, &ep, &pmap->h_map);
+    if(n){
+        ep->data = (void*)NULL;
+        delete_item_list(key, &pmap->head);
     }
   }
 }
@@ -123,15 +142,20 @@ bool is_empty_hmap(hmap_t* pmap){
     return is_empty_list(&pmap->head);
 }
 
-/*
+/**
 int main(void)
 {
     char key[64] = "lever1";
     char data[64] = "data";
 
     hmap_t* pmap = create_hmap(64);
-    add_item_hmap(pmap, key, data);
-    log_debug("key: %s => value: %s",key,(char*)get_item_hmap(pmap, key));
+    add_item_hmap(pmap, key, (void*)data);
+    printf("key: %s => value: %s\n",key,(char*)get_item_hmap(pmap, key));
+    char data2[64] = "data64";
+    add_update_item_hmap(pmap, key, (void*)data2);
+    printf("key: %s => value: %s\n",key,(char*)get_item_hmap(pmap, key));
+    delete_item_hmap(pmap, key);
+    printf("key: %s => value: %s\n",key,(char*)get_item_hmap(pmap, key));
     return 0;
 }
-*/
+**/
