@@ -16,15 +16,15 @@
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     *darr = NULL;
     *num = 0;
     while (entry = real_readdir(dirp)) {
-        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
+        if ((strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)debug_malloc(sizeof(struct dirent_obj));
@@ -78,7 +78,7 @@ DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, stru
     *num = *wh_num = 0;
     while (entry = real_readdir(dirp)) {
         //if is in layers root location, do not add (".","..") as root location does not have ./..
-        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
+        if ((strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         struct dirent_obj* tmp = (struct dirent_obj*)debug_malloc(sizeof(struct dirent_obj));
@@ -146,7 +146,7 @@ void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
     *names = (char **)debug_malloc(sizeof(char *)*MAX_VALUE_SIZE);
     *num = 0;
     while(entry = real_readdir(dirp)){
-        if (is_container_root(name) && (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
+        if ((strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
         (*names)[*num] = strdup(entry->d_name);
@@ -154,40 +154,6 @@ void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
     }
     real_closedir(dirp);
 }
-//this function will not delete the whiteout target folders/files, only hide the .wh/.op files
-struct dirent_layers_entry* getDirContent(const char* abs_path)
-{
-    if (!abs_path || *abs_path == '\0') {
-        return NULL;
-    }
-    INITIAL_SYS(closedir)
-        struct dirent_obj* darr;
-    size_t num;
-    struct dirent_layers_entry* p = (struct dirent_layers_entry*)debug_malloc(sizeof(struct dirent_layers_entry));
-    getDirentsNoRet(abs_path, &darr, &num);
-    strcpy(p->path, abs_path);
-    p->capacity = DEFAULT_ITEMS;
-    struct dirent_obj* curr = darr;
-    p->wh_masked = (char**)debug_malloc(sizeof(char*) * DEFAULT_ITEMS);
-    while (curr) {
-        char* m_trans = (char*)debug_malloc(sizeof(char) * MAX_PATH);
-        if (transWh2path(curr->d_name, PREFIX_WH, m_trans)) {
-            p->wh_masked_num += 1;
-            if(p->wh_masked_num >= p->capacity){
-                p->capacity *= 2;
-                p->wh_masked = (char**)debug_realloc(p->wh_masked, p->capacity);
-            }
-            p->wh_masked[p->wh_masked_num] = m_trans;
-            //log_debug("wh file %s is added to wh_map",curr->d_name);
-            deleteItemInChainByPointer(&darr, &curr);
-            continue;
-        }
-        curr = curr->next;
-    }
-    p->data = darr;
-    return p;
-}
-
 /**
  * code is modified as all layers except rw layers are relocated
  */
@@ -1291,6 +1257,7 @@ end_file:
     goto end;
 
 end:
+    log_debug("%s ends", function);
     if(strcmp(function,"openat") == 0){
         return RETURN_SYS(openat,(dirfd,destpath,oflag,mode))
     }
@@ -1372,6 +1339,7 @@ FILE* fufs_fopen_impl(const char * function, ...){
         }
 
 end:
+    log_debug("%s ends", function);
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
             recurMkdir(path);
@@ -1449,9 +1417,8 @@ int fufs_unlink_impl(const char* function,...){
                 }else{
                     char tmp[MAX_PATH];
                     for(size_t i = 0; i<num; i++){
-                        sprintf(tmp, "%s/%s", abs_path, names[i]);
-                        log_debug("not all files in folder: %s are whiteout files, while we need to delete them iteratively: %s", abs_path, tmp);
-                        real_unlink(tmp);
+                        sprintf(tmp,"%s/%s",abs_path,names[i]);
+                        unlink(tmp);
                     }
                 }
 
@@ -1538,6 +1505,7 @@ int fufs_unlink_impl(const char* function,...){
         }
 
 end:
+    log_debug("%s ends on %s", function, abs_path);
     if(strcmp(function,"unlinkat") == 0){
         return RETURN_SYS(unlinkat,(dirfd,abs_path,oflag))
     }else{
@@ -1569,6 +1537,10 @@ struct dirent_obj* listDir(const char *path, int *num){
         return NULL;
     }
 
+    //used for garbage collected dirent_obj
+    struct dirent_obj* gar_head, *gar_tail;
+    gar_head = gar_tail = NULL;
+
     for (int i = 0; i < layer_num; i++) {
         char each_layer_path[MAX_PATH];
         //search in each layer
@@ -1596,14 +1568,16 @@ struct dirent_obj* listDir(const char *path, int *num){
                     }
 
                     //add wh_items to hashmap and then free them
+                    if(wh_items){
+                        gar_head = wh_items;
+                    }
                     while(wh_items){
                         log_debug("item added to wh_map %s", wh_items->d_name);
                         add_item_hmap(wh_map, wh_items->d_name, NULL);
-                        struct dirent_obj* p = wh_items;
                         wh_items = wh_items->next;
-                        debug_free(p->dp);
-                        debug_free(p->dp64);
-                        debug_free(p);
+                        if(wh_items && wh_items->next == NULL){
+                            gar_tail = wh_items;
+                        }
                     }
                     //otherwise merge content
                 } else{
@@ -1656,29 +1630,50 @@ struct dirent_obj* listDir(const char *path, int *num){
                     }
 
                     //here we check wh_items
+                    if(wh_items){
+                        if(gar_head == NULL && gar_tail == NULL){
+                            gar_head = wh_items;
+                        }else{
+                            gar_tail->next = wh_items;
+                        }
+                    }
                     while(wh_items){
                         log_debug("item added to wh_map %s", wh_items->d_name);
                         add_item_hmap(wh_map, wh_items->d_name, NULL);
-                        struct dirent_obj* p = wh_items;
                         wh_items = wh_items->next;
-                        debug_free(p->dp);
-                        debug_free(p->dp64);
-                        debug_free(p);
+                        if(wh_items && wh_items->next == NULL){
+                            gar_tail = wh_items;
+                        }
                     }
                 } //else merge content ends
 
             } //layer has content?
         } // layer exists?
+        
+        //if nay whiteout file for parant folder exists
+        if(getParentWh(each_layer_path) == 1){
+            break;
+        }
     }// loop layers
 
     //free layers and hashmap
+    while(gar_head){
+        struct dirent_obj* p = gar_head;
+        gar_head = gar_head->next;
+        debug_free(p->dp);
+        debug_free(p->dp64);
+        debug_free(p);
+    }
+
     for(size_t i = 0; i< layer_num; i++){
         debug_free(layers[i]);
     }
     debug_free(layers);
+
     if(dirent_map){
         destroy_hmap(dirent_map);
     }
+
     if(wh_map){
         destroy_hmap(wh_map);
     }
@@ -1690,154 +1685,11 @@ struct dirent_obj* listDir(const char *path, int *num){
         (*num)++;
         p = p->next;
     }
+
+    log_debug("listDir ends");
     return head;
 }
 
-//this function scans content of given directory, and returns its content without whiteouted files
-struct dirent_obj* scanDir(const char *path, int *num){
-    size_t layer_num;
-    char ** layers = getLayerPaths(&layer_num);
-    if(layer_num < 1){
-        log_fatal("can't find layer info");
-        return NULL;
-    }
-
-    struct dirent_obj *head, *tail;
-    head = tail = NULL;
-
-    //map
-    hmap_t* dirent_map = create_hmap(MAX_ITEMS);
-    hmap_t* wh_map = create_hmap(MAX_ITEMS);
-
-    char rel_path[MAX_PATH];
-    char layer_path[MAX_PATH];
-    int ret = get_relative_path_layer(path, rel_path, layer_path);
-    if (ret == -1) {
-        log_fatal("%s is not inside the container, abs path: %s", rel_path, path);
-        return NULL;
-    }
-
-    for (int i = 0; i < layer_num; i++) {
-        char each_layer_path[MAX_PATH];
-        sprintf(each_layer_path, "%s/%s", layers[i], rel_path);
-        log_debug("preparing for accessing target layer: %s", each_layer_path);
-
-        if(xstat(each_layer_path)){
-            struct dirent_layers_entry* entry = getDirContent(each_layer_path);
-
-            if (entry->data || entry->wh_masked_num > 0) {
-                //intialized part for the first layer
-                if (head == NULL && tail == NULL && is_empty_hmap(wh_map) && is_empty_hmap(dirent_map)) {
-                    head = tail = entry->data;
-                    if(head){
-                        while (tail->next != NULL) {
-                            log_debug("item added to dirent_map %s", tail->d_name);
-                            add_item_hmap(dirent_map, tail->d_name, NULL);
-                            tail = tail->next;
-                        }
-                        log_debug("item added to dirent_map %s", tail->d_name);
-                        add_item_hmap(dirent_map, tail->d_name, NULL);
-                    }
-                    for (size_t wh_i = 0; wh_i < entry->wh_masked_num; wh_i++) {
-                        log_debug("item added to wh_map %s", entry->wh_masked[wh_i]);
-                        add_item_hmap(wh_map, entry->wh_masked[wh_i], NULL);
-                    }
-                } else {
-                    //need to merge folders files and hide wh
-                    //as head and tail are not null, which means previous manipulation is produced
-                    //but head and tail may be null
-                    struct dirent_obj* prew = tail;
-                    if(prew){
-                        //tail is not NULL, meaning that head is not NULL, head should not be reset
-                        if(entry->data){
-                            prew->next = entry->data;
-                            tail = prew->next;
-                        }else{
-                            goto ends;
-                        }
-                    }else{
-                        //tail is NULL, meaning that head may be NULL as well
-                        if(entry->data){
-                            prew = tail = entry->data;
-                            if(!head){
-                                head = prew;
-                            }
-                        }else{
-                            goto ends;
-                        }
-                    }
-                    while (tail->next != NULL) {
-                        if (!contain_item_hmap(dirent_map, tail->d_name) && !contain_item_hmap(wh_map, tail->d_name)) {
-                            log_debug("item added to dirent_map %s", tail->d_name);
-                            add_item_hmap(dirent_map, tail->d_name, NULL);
-                        } else {
-                            log_debug("item deteled from dirent_map %s", tail->d_name);
-                            deleteItemInChainByPointer(&head, &tail);
-                            if (!tail) {
-                                tail = prew;
-                            }
-                            continue;
-                        }
-                        prew = tail;
-                        tail = tail->next;
-                    }
-                    if (!contain_item_hmap(dirent_map, tail->d_name) && !contain_item_hmap(wh_map, tail->d_name)) {
-                        log_debug("item added to dirent_map %s", tail->d_name);
-                        add_item_hmap(dirent_map, tail->d_name, NULL);
-                    } else {
-                        log_debug("item deteled from dirent_map %s", tail->d_name);
-                        deleteItemInChainByPointer(&head, &tail);
-                        if (!tail) {
-                            //reset tail to its previous item if tail is NULL
-                            //as next iterator may modify tail e.g tail->next = new_list
-                            tail = prew;
-                        }
-                    }
-
-ends:
-                    for (size_t wh_i = 0; wh_i < entry->wh_masked_num; wh_i++) {
-                        log_debug("item added to wh_map %s", entry->wh_masked[wh_i]);
-                        add_item_hmap(wh_map, entry->wh_masked[wh_i], NULL);
-                    }
-                }
-            } // exists data or white out files
-            if(entry){
-                for(int wi =0; wi<entry->wh_masked_num;wi++){
-                    debug_free(entry->wh_masked[wi]);
-                }
-                debug_free(entry->wh_masked);
-                debug_free(entry);
-            }
-        } // layer path exists
-
-        //find if any whiteout parent folders exists
-        if(getParentWh(each_layer_path) == 1){
-            break;
-        }
-    }
-
-    //clean resource
-    if(dirent_map){
-        destroy_hmap(dirent_map);
-    }
-    if(wh_map){
-        destroy_hmap(wh_map);
-    }
-    if(layers){
-        for(int i = 0; i < layer_num; i++){
-            debug_free(layers[i]);
-        }
-        debug_free(layers);
-    }
-
-    *num = 0;
-    struct dirent_obj *loop = head;
-    while(loop != NULL){
-        (*num)++;
-        loop = loop->next;
-    }
-    return head;
-}
 
 struct dirent_obj* fufs_opendir_impl(const char* function,...){
     //container layer from top to lower
@@ -1885,6 +1737,8 @@ int fufs_mkdir_impl(const char* function,...){
     }
 
     dedotdot(resolved);
+
+    log_debug("mkdir %s ends", resolved);
     return recurMkdirMode(resolved, mode);
 
     /**
@@ -1940,7 +1794,7 @@ int fufs_link_impl(const char * function, ...){
     INITIAL_SYS(linkat)
         INITIAL_SYS(link)
 
-
+    log_debug("%s ends", function);
         if(strcmp(function,"linkat") == 0){
             return RETURN_SYS(linkat,(olddirfd,oldpath,newdirfd,resolved,flags))
         }else{
@@ -1990,6 +1844,7 @@ int fufs_symlink_impl(const char *function, ...){
         recurMkdirMode(dir, FOLDER_PERM);
     }
 
+    log_debug("%s ends on %s => %s", function, target, resolved);
     if(strcmp(function,"symlinkat") == 0){
         return RETURN_SYS(symlinkat,(target,newdirfd,resolved))
     }else{
@@ -2030,6 +1885,7 @@ int fufs_creat_impl(const char *function,...){
         recurMkdirMode(dir,FOLDER_PERM);
     }
 
+    log_debug("%s ends", function);
     if(strcmp(function,"creat64") == 0){
         return RETURN_SYS(creat64,(resolved,mode))
     }else{
@@ -2093,6 +1949,7 @@ int fufs_chmod_impl(const char* function, ...){
     }
 
 end:
+    log_debug("%s ends", function);
     if(strcmp(function, "chmod") == 0){
         return RETURN_SYS(chmod,(resolved, mode))
     }
@@ -2191,6 +2048,7 @@ int fufs_rmdir_impl(const char* function, ...){
         }
 
 end:
+        log_debug("rmdir ends on %s", path);
         return RETURN_SYS(rmdir,(path))
     }else{
         //in other layers
@@ -2209,6 +2067,7 @@ end:
                 return -1;
             }
             close(fd);
+            log_debug("rmdir ends on %s", new_path);
             return 0;
         }
     }
@@ -2269,6 +2128,7 @@ int fufs_rename_impl(const char* function, ...){
 
     INITIAL_SYS(rename)
         INITIAL_SYS(renameat)
+        log_debug("%s ends", function);
         if(strcmp(new_layer_path, container_root) == 0){
             if(strcmp(function,"renameat") == 0){
                 return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,newpath))

@@ -100,7 +100,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     int cwdfd = 0;
     char cwd[FAKECHROOT_PATH_MAX];
 
-    debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
+    //debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
     if (name == NULL) {
         resolved = NULL;
         goto end;

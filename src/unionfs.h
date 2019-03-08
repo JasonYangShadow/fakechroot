@@ -85,21 +85,12 @@ enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
         struct dirent_obj* next;
     };
 
-struct dirent_layers_entry{
-    char path[MAX_PATH];
-    struct dirent_obj * data;
-    char** wh_masked;
-    size_t wh_masked_num;
-    size_t capacity;
-};
-
 enum hash_type{md5,sha256};
 DIR * getDirents(const char* name, struct dirent_obj** darr, size_t *num);
 void getDirentsNoRet(const char* name, struct dirent_obj** darr, size_t *num);
 DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, struct dirent_obj** wh_darr, size_t *wh_num);
 void getDirentsWhNoRet(const char* name, struct dirent_obj** darr, size_t *num, struct dirent_obj** wh_darr, size_t *wh_num);
 void getDirentsOnlyNames(const char* name, char ***names,size_t *num);
-struct dirent_layers_entry* getDirContent(const char* abs_path);
 char ** getLayerPaths(size_t *num);
 void filterMemDirents(const char* name, struct dirent_obj* darr, size_t num);
 void deleteItemInChain(struct dirent_obj** darr, size_t num);
@@ -130,7 +121,6 @@ bool copyFile2RW(const char *abs_path, char *resolved);
 bool resolveSymlink(const char *link, char *target);
 int recurMkdir(const char *path);
 int recurMkdirMode(const char *path, mode_t mode);
-struct dirent_obj* scanDir(const char *path, int *num);
 struct dirent_obj* listDir(const char *path, int *num);
 bool is_container_root(const char *abs_path);
 bool is_inside_container(const char *abs_path);

@@ -1,4 +1,9 @@
 #include "hashmap.h"
+/**
+ * before using hashmap, something critical should be declared firstly
+ * key and value are references to original data, it is not copy version, meaning that free original(key, data) will make hashmap not work properly.
+ * DO NOT FREE key and data
+ **/
 
 void add_item_list(const char* key, struct list_head* phead){
     struct list_item * item = (struct list_item*)malloc(sizeof(struct list_item));
