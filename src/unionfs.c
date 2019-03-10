@@ -963,7 +963,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            log_debug("start creating dir %s", path);
+        log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -977,14 +977,25 @@ bool pathExcluded(const char *abs_path){
     if(abs_path == NULL || *abs_path == '\0'){
         return false;
     }
+
+    char resolved[MAX_PATH];
     if(*abs_path != '/'){
-        log_error("input path should be absolute path rather than relative path: %s",abs_path);
-        return false;
+        char cwd[MAX_PATH];
+        getcwd(cwd, MAX_PATH);
+        if(cwd){
+            sprintf(resolved, "%s/%s", cwd, abs_path);
+            dedotdot(resolved);
+        }else{
+            log_fatal("could not get cwd");
+            return false;
+        }
+    }else{
+        strcpy(resolved, abs_path);
     }
 
     const char* data_sync = getenv("FAKECHROOT_DATA_SYNC");
     if(data_sync){
-        if(strncmp(data_sync, abs_path, strlen(data_sync)) == 0){
+        if(strncmp(data_sync, resolved, strlen(data_sync)) == 0){
             return true;
         }
     }
@@ -995,7 +1006,7 @@ bool pathExcluded(const char *abs_path){
         strcpy(exclude_path_dup, exclude_path);
         char *str_tmp = strtok(exclude_path_dup,":");
         while (str_tmp){
-            if(strncmp(str_tmp, abs_path,strlen(str_tmp)) == 0){
+            if(strncmp(str_tmp, resolved,strlen(str_tmp)) == 0){
                 return true;
             }
             str_tmp = strtok(NULL,":");
@@ -2075,6 +2086,7 @@ end:
     return -1;
 }
 
+//rename is used for renaming files
 int fufs_rename_impl(const char* function, ...){
     va_list args;
     va_start(args, function);
@@ -2090,6 +2102,7 @@ int fufs_rename_impl(const char* function, ...){
         newpath = va_arg(args, const char *);
     }
     va_end(args);
+    INITIAL_SYS(creat)
 
     const char * container_root = getenv("ContainerRoot");
     char old_rel_path[MAX_PATH];
@@ -2106,12 +2119,24 @@ int fufs_rename_impl(const char* function, ...){
         copyFile2RW(oldpath, old_resolved);
         //fake deleting oldpath
         char * bname = basename(old_resolved);
+        char old_resolved_dup[MAX_PATH];
+        strcpy(old_resolved_dup, old_resolved);
+        dirname(old_resolved_dup);
+        char wh_new_rel_path[MAX_PATH];
+        char wh_new_layer_path[MAX_PATH];
+        get_relative_path_layer(old_resolved_dup, wh_new_rel_path, wh_new_layer_path);
+
+        //get corrected whpath
         char whpath[MAX_PATH];
-        sprintf(whpath, "%s/%s/.wh.%s", container_root, old_rel_path, bname);
+        sprintf(whpath, "%s/%s/.wh.%s", container_root, wh_new_rel_path, bname);
+        dedotdot(whpath);
+
         if(!xstat(whpath)){
+            //create parant folder if needed
+            recurMkdir(whpath);
             int fd = real_creat(whpath,FILE_PERM);
             if(fd < 0){
-                log_fatal("%s can't create file: %s with error: %s", function, whpath, strerror(errno));
+                log_fatal("%s can't create file: %s with error: %s, oldpath: %s, old_rel_path: %s, old_layer_path: %s, ContainerRoot: %s", function, whpath, strerror(errno), oldpath, old_rel_path, old_layer_path, container_root);
                 return -1;
             }
             close(fd);

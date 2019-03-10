@@ -28,57 +28,58 @@
 #include "unionfs.h"
 #include <stdlib.h>
 
+/**
+  int compare64(const void* A, const void* B){
+  return strcmp((*(struct dirent64 **)A)->d_name, (*(struct dirent64 **)B)->d_name);
+  }
 
-int compare64(const void* A, const void* B){
-    return strcmp((*(struct dirent64 **)A)->d_name, (*(struct dirent64 **)B)->d_name);
-}
+  wrapper(scandir64, int, (const char * dir, struct dirent64 *** namelist, SCANDIR64_TYPE_ARG3(filter), SCANDIR64_TYPE_ARG4(compar)))
+  {
+  debug("scandir64(\"%s\", &namelist, &filter, &compar)", dir);
+  expand_chroot_path(dir);
+
+  if(pathExcluded(dir)){
+  return nextcall(scandir64)(dir, namelist, filter, compar);
+  }
+
+  int num;
+  struct dirent_obj* ret = listDir(dir, &num);
+  clearItems(&ret);
+ *namelist = NULL;
+ return 0;
+ if(num > 0 && ret != NULL){
+ *namelist = (struct dirent64 **)malloc(sizeof(struct dirent64 *)*num);
+ struct dirent_obj* loop = ret;
+ int i = 0;
+ while(loop != NULL){
+ if(filter!=NULL && !(*filter)(loop->dp64)){
+ loop = loop->next;
+ continue;
+ }
+ *namelist[i] = loop->dp64;
+ loop = loop->next;
+ i++;
+ }
+ if(num > 0 && compar != NULL){
+ qsort(*namelist, num, sizeof(struct dirent64 *), compare64);
+ }
+ clearItems(&ret);
+ return i;
+ }else{
+ if(ret != NULL){
+ clearItems(&ret);
+ }
+ *namelist = NULL;
+ return 0;
+ }
+ }**/
 
 wrapper(scandir64, int, (const char * dir, struct dirent64 *** namelist, SCANDIR64_TYPE_ARG3(filter), SCANDIR64_TYPE_ARG4(compar)))
 {
     debug("scandir64(\"%s\", &namelist, &filter, &compar)", dir);
     expand_chroot_path(dir);
-
-    if(pathExcluded(dir)){
-        return nextcall(scandir64)(dir, namelist, filter, compar);
-    }
-
-    int num;
-    struct dirent_obj* ret = listDir(dir, &num);
-    if(num > 0 && ret != NULL){
-        *namelist = (struct dirent64 **)malloc(sizeof(struct dirent64 *)*num);
-        struct dirent_obj* loop = ret;
-        int i = 0;
-        while(loop != NULL){
-            if(filter!=NULL && !(*filter)(loop->dp64)){
-                loop = loop->next;
-                continue;
-            }
-            *namelist[i] = loop->dp64;
-            loop = loop->next;
-            i++;
-        }
-        if(num > 0 && compar != NULL){
-            qsort(*namelist, num, sizeof(struct dirent64 *), compare64);
-        }
-        clearItems(&ret);
-        return i;
-    }else{
-        if(ret != NULL){
-            clearItems(&ret);
-        }
-        *namelist = NULL;
-        return 0;
-    }
+    return nextcall(scandir64)(dir, namelist, filter, compar);
 }
-
-/**
-  wrapper(scandir64, int, (const char * dir, struct dirent64 *** namelist, SCANDIR64_TYPE_ARG3(filter), SCANDIR64_TYPE_ARG4(compar)))
-  {
-  debug("scandir64(\"%s\", &namelist, &filter, &compar)", dir);
-  expand_chroot_path(dir);
-  return nextcall(scandir64)(dir, namelist, filter, compar);
-  }
- **/
 
 #else
 typedef int empty_translation_unit;
