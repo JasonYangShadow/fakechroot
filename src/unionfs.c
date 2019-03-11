@@ -56,7 +56,7 @@ DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
     }
 
     //dirent64 read
-    rewinddir(dirp);
+    //rewinddir(dirp);
     return dirp;
 }
 
@@ -126,7 +126,7 @@ DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, stru
     }//while ends
 
     //dirent64 read
-    rewinddir(dirp);
+    //rewinddir(dirp);
     return dirp;
 
 }
