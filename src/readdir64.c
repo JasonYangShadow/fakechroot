@@ -27,16 +27,19 @@
 #include "libfakechroot.h"
 #include "unionfs.h"
 
-extern struct dirent_obj * darr;
+extern struct dirent_obj* darr_list[MAX_ITEMS];
 wrapper(readdir64, struct dirent64 *, (DIR * dirp))
 {
+    int fd = dirfd(dirp);
+    struct dirent_obj* darr = darr_list[fd];
     if(darr != NULL){
         struct dirent64* entry64 = popItemFromHeadV64(&darr);
         debug("readdir64 %s", entry64->d_name);
+        darr_list[fd] = darr;
         return entry64;
     }else{
         debug("default readdir64");
-        return nextcall(readdir64)(dirp);
+        return NULL;
     }
 }
 #else

@@ -100,7 +100,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     int cwdfd = 0;
     char cwd[FAKECHROOT_PATH_MAX];
 
-    debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
+    //debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
     if (name == NULL) {
         resolved = NULL;
         goto end;
@@ -112,7 +112,8 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     }
 
     //preprocess name
-    char * name_dup = strdup(name);
+    char name_dup[FAKECHROOT_PATH_MAX];
+    strcpy(name_dup, name);
     dedotdot(name_dup);
 
     const char * container_root = getenv("ContainerRoot");
@@ -181,6 +182,12 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
                 if(!b_resolved){
                     const char * container_root = getenv("ContainerRoot");
                     snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",container_root,rel_path);
+                }
+                if(paths){
+                    for(size_t i = 0; i < num; i++){
+                        free(paths[i]);
+                    }
+                    free(paths);
                 }
             }
         }else{
@@ -252,6 +259,12 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
                 if(!b_resolved){
                     const char * container_root = getenv("ContainerRoot");
                     snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",container_root,rel_path);
+                }
+                if(paths){
+                    for(size_t i = 0; i < num; i++){
+                        free(paths[i]);
+                    }
+                    free(paths);
                 }
             }
         }else{

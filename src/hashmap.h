@@ -6,7 +6,6 @@
 #include <string.h>
 #include <sys/queue.h>
 #include "stdbool.h" 
-#include <pthread.h>
 
 #define __USE_GNU 1
 #include <search.h>
@@ -37,6 +36,7 @@ typedef struct hmap_t{
 hmap_t* create_hmap(size_t h_max_size);
 void destroy_hmap(hmap_t* pmap);
 int add_item_hmap(hmap_t* pmap, char* key, void* data);
+int add_update_item_hmap(hmap_t* pmap, char* key, void* data);
 void* get_item_hmap(hmap_t* pmap, char* key);
 void delete_item_hmap(hmap_t* pmap,char* key);
 bool contain_item_hmap(hmap_t* pmap,char* key);

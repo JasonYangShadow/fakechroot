@@ -45,9 +45,7 @@ void loginfo(enum LOG_LEVEL level, const char * file, int line, char *fmt, ...){
     sprintf(buff_data+strlen(buff_data),"\"%s\n","}");
 
     if(level >= slog.l_level){
-         fprintf(stdout,"%s",buff_data);
-         fflush(stdout);
-        
+         fprintf(stderr,"%s",buff_data);
     }
 
     if(slog.fp){

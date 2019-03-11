@@ -16,8 +16,6 @@
    License along with this library; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
    */
-
-
 #include <config.h>
 
 #ifdef HAVE_SCANDIR
@@ -27,56 +25,48 @@
 #include "unionfs.h"
 #include <stdlib.h>
 
+/**
 int compare(const void* A, const void* B){
     return strcmp((*(struct dirent**)A)->d_name, (*(struct dirent **)B)->d_name);
 }
+  wrapper(scandir, int, (const char * dir, struct dirent *** namelist, SCANDIR_TYPE_ARG3(selector), SCANDIR_TYPE_ARG4(cmp)))
+  {
+  debug("scandir %s", dir);
+  expand_chroot_path(dir);
+
+  if(pathExcluded(dir)){
+  return nextcall(scandir)(dir, namelist, selector, cmp);
+  }
+
+ *namelist = NULL;
+ int num;
+ struct dirent_obj* ret = listDir(dir, &num);
+ if(num > 0 && ret != NULL){
+ *namelist = (struct dirent **)malloc(sizeof(struct dirent*)*num);
+ struct dirent_obj* loop = ret;
+ unsigned idx = 0;
+ while(loop){
+ memcpy(*namelist[idx], loop->dp, sizeof(struct dirent));
+ loop = loop->next;
+ idx ++;
+ }
+ }
+ if(cmp && num> 0){
+ qsort(*namelist, num, sizeof(struct dirent *), compare);
+ }
+
+ clearItems(&ret);
+ debug("*************** num: %d", num);
+ return num;
+ }
+ **/
 
 wrapper(scandir, int, (const char * dir, struct dirent *** namelist, SCANDIR_TYPE_ARG3(filter), SCANDIR_TYPE_ARG4(compar)))
 {
     debug("scandir(\"%s\", &namelist, &filter, &compar)", dir);
     expand_chroot_path(dir);
-
-    if(pathExcluded(dir)){
-        return nextcall(scandir)(dir, namelist, filter, compar);
-    }
-
-    int num;
-    struct dirent_obj* ret = scanDir(dir, &num, false);
-    if(num > 0 && ret != NULL){
-        *namelist = (struct dirent **)malloc(sizeof(struct dirent *)*num);
-        struct dirent_obj* loop = ret;
-        int i = 0;
-        while(loop != NULL){
-            if(filter!=NULL && !(*filter)(loop->dp)){
-                loop = loop->next;
-                continue;
-            }
-            *namelist[i] = loop->dp;
-            loop = loop->next;
-            i++;
-        }
-        if(num > 0 && compar != NULL){
-            qsort(*namelist, num, sizeof(struct dirent *), compare);
-        }
-        clearItems(&ret);
-        return i;
-    }else{
-        if(ret != NULL){
-            clearItems(&ret);
-        }
-        *namelist = NULL;
-        return 0;
-    }
+    return nextcall(scandir)(dir, namelist, filter, compar);
 }
-
-/**
-  wrapper(scandir, int, (const char * dir, struct dirent *** namelist, SCANDIR_TYPE_ARG3(filter), SCANDIR_TYPE_ARG4(compar)))
-  {
-  debug("scandir(\"%s\", &namelist, &filter, &compar)", dir);
-  expand_chroot_path(dir);
-  return nextcall(scandir)(dir, namelist, filter, compar);
-  }
- **/
 
 #else
 typedef int empty_translation_unit;
