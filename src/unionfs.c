@@ -1517,6 +1517,10 @@ int fufs_unlink_impl(const char* function,...){
 
 end:
     log_debug("%s ends on %s", function, abs_path);
+    //if dir should use rmdir
+    if(is_file_type(abs_path, TYPE_DIR)){
+        return rmdir(abs_path);
+    }
     if(strcmp(function,"unlinkat") == 0){
         return RETURN_SYS(unlinkat,(dirfd,abs_path,oflag))
     }else{
