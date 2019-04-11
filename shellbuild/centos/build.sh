@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#this script is only coded for centos 5
 # arg1 => libname arg2 => dependency
 function getLibrary()
 {
