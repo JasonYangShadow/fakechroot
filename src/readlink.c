@@ -39,7 +39,6 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
     }
     expand_chroot_path(path);
 
-    /**
     const char *proc_exclude_path = getenv("FAKECHROOT_EXCLUDE_PROC_PATH");
     if(proc_exclude_path){
         char proc_exclude_path_dup[MAX_PATH];
@@ -54,7 +53,6 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
             proc_tmp = strtok(NULL,":");
         }
     }
-    **/
 
     INITIAL_SYS(readlink)
         if((linksize = real_readlink(path, tmp, MAX_PATH - 1)) == -1){
