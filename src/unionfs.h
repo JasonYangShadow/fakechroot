@@ -124,6 +124,7 @@ int recurMkdirMode(const char *path, mode_t mode);
 struct dirent_obj* listDir(const char *path, int *num);
 bool is_container_root(const char *abs_path);
 bool is_inside_container(const char *abs_path);
+bool parse_cmd_line(const char *cmdline, char *execute);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

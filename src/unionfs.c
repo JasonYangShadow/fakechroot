@@ -16,9 +16,9 @@
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
-    INITIAL_SYS(readdir)
+        INITIAL_SYS(readdir)
 
-    DIR* dirp = real_opendir(name);
+        DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     *darr = NULL;
@@ -55,8 +55,7 @@ DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
         (*num)++;
     }
 
-    //dirent64 read
-    //rewinddir(dirp);
+    rewinddir(dirp);
     return dirp;
 }
 
@@ -68,9 +67,9 @@ void getDirentsNoRet(const char* name, struct dirent_obj** darr, size_t *num){
 
 DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, struct dirent_obj** wh_darr, size_t *wh_num){
     INITIAL_SYS(opendir)
-    INITIAL_SYS(readdir)
+        INITIAL_SYS(readdir)
 
-    DIR* dirp = real_opendir(name);
+        DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     struct dirent_obj* wh_curr = NULL;
@@ -125,8 +124,7 @@ DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, stru
 
     }//while ends
 
-    //dirent64 read
-    //rewinddir(dirp);
+    rewinddir(dirp);
     return dirp;
 
 }
@@ -347,6 +345,38 @@ void clearItems(struct dirent_obj** darr)
     darr = NULL;
 }
 
+bool parse_cmd_line(const char *cmdline, char *execute){
+    if(is_file_type(cmdline, TYPE_FILE)){
+        INITIAL_SYS(fopen)
+            FILE *f = real_fopen(cmdline, "r");
+        if(f){
+            int c;
+            //skip first \0
+            while((c = fgetc(f)) != '\0');
+            int idx = 0;
+            char tmp[MAX_PATH];
+            while ((c = fgetc(f)) != '\0')
+            {
+                tmp[idx++] = c;
+            }
+            tmp[idx] = '\0';
+
+            //get execuate
+            char rel_path[MAX_PATH], layer_path[MAX_PATH];
+            int ret = get_relative_path_layer(tmp, rel_path, layer_path);
+            if(ret == 0){
+                execute[0] = '/';
+                sprintf(execute, "/%s", rel_path);
+            }else{
+                strcpy(execute, tmp);
+            }
+
+            fclose(f);
+            return true;
+        }
+    }
+    return false;
+}
 /**
   char* struct2hash(void* pointer, enum hash_type type)
   {
@@ -963,7 +993,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-        log_debug("start creating dir %s", path);
+            log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -1664,7 +1694,7 @@ struct dirent_obj* listDir(const char *path, int *num){
 
             } //layer has content?
         } // layer exists?
-        
+
         //if nay whiteout file for parant folder exists
         if(getParentWh(each_layer_path) == 1){
             break;
@@ -1809,12 +1839,12 @@ int fufs_link_impl(const char * function, ...){
     INITIAL_SYS(linkat)
         INITIAL_SYS(link)
 
-    log_debug("%s ends", function);
-        if(strcmp(function,"linkat") == 0){
-            return RETURN_SYS(linkat,(olddirfd,oldpath,newdirfd,resolved,flags))
-        }else{
-            return RETURN_SYS(link,(oldpath,resolved))
-        }
+        log_debug("%s ends", function);
+    if(strcmp(function,"linkat") == 0){
+        return RETURN_SYS(linkat,(olddirfd,oldpath,newdirfd,resolved,flags))
+    }else{
+        return RETURN_SYS(link,(oldpath,resolved))
+    }
 }
 
 int fufs_symlink_impl(const char *function, ...){
@@ -2108,7 +2138,7 @@ int fufs_rename_impl(const char* function, ...){
     va_end(args);
     INITIAL_SYS(creat)
 
-    const char * container_root = getenv("ContainerRoot");
+        const char * container_root = getenv("ContainerRoot");
     char old_rel_path[MAX_PATH];
     char old_layer_path[MAX_PATH];
     int old_ret = get_relative_path_layer(oldpath, old_rel_path, old_layer_path);
@@ -2158,23 +2188,23 @@ int fufs_rename_impl(const char* function, ...){
     INITIAL_SYS(rename)
         INITIAL_SYS(renameat)
         log_debug("%s ends", function);
-        if(strcmp(new_layer_path, container_root) == 0){
-            if(strcmp(function,"renameat") == 0){
-                return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,newpath))
-            }else{
-                return RETURN_SYS(rename,(old_resolved,newpath))
-            }
+    if(strcmp(new_layer_path, container_root) == 0){
+        if(strcmp(function,"renameat") == 0){
+            return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,newpath))
         }else{
-            //newpath is not in rw folder, replacing it by force and delete original one
-            char new_resolved[MAX_PATH];
-            sprintf(new_resolved,"%s/%s",container_root,new_rel_path);
-            unlink(newpath);
-            if(strcmp(function,"renameat") == 0){
-                return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,new_resolved))
-            }else{
-                return RETURN_SYS(rename,(old_resolved,new_resolved))
-            }
+            return RETURN_SYS(rename,(old_resolved,newpath))
         }
+    }else{
+        //newpath is not in rw folder, replacing it by force and delete original one
+        char new_resolved[MAX_PATH];
+        sprintf(new_resolved,"%s/%s",container_root,new_rel_path);
+        unlink(newpath);
+        if(strcmp(function,"renameat") == 0){
+            return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,new_resolved))
+        }else{
+            return RETURN_SYS(rename,(old_resolved,new_resolved))
+        }
+    }
     errno = EACCES;
     return -1;
 }

@@ -37,27 +37,68 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
         errno = ENOENT;
         return -1;
     }
-    expand_chroot_path(path);
 
-    const char *proc_exclude_path = getenv("FAKECHROOT_EXCLUDE_PROC_PATH");
-    if(proc_exclude_path){
-        char proc_exclude_path_dup[MAX_PATH];
-        strcpy(proc_exclude_path_dup, proc_exclude_path);
-        char *proc_tmp = strtok(proc_exclude_path_dup,":");
-        while(proc_tmp != NULL){
-            if(strncmp(proc_tmp,path,strlen(proc_tmp)) == 0){
-                linksize = 1;
-                strcpy(buf,"/");
-                return linksize;
+    INITIAL_SYS(readlink)
+
+        //processing /proc/self/cwd /proc/self/exe /proc/self/root
+        if(strncmp(path,"/proc/self/root", strlen("/proc/self/root")) == 0){
+            strcpy(buf,"/");
+            linksize = 1;
+            return linksize;
+        }
+
+    if(strncmp(path, "/proc/self/cwd", strlen("/proc/self/cwd")) == 0){
+        if(is_file_type(path, TYPE_LINK)){
+            linksize = real_readlink(path, tmp, MAX_PATH -1);
+            if(linksize != -1){
+                tmp[linksize] = '\0';
+
+                char rel_path[MAX_PATH], layer_path[MAX_PATH];
+                int ret = get_relative_path_layer(tmp, rel_path, layer_path);
+                if(ret == 0){
+                    strncpy(buf, "/", 1);
+                    if(strcmp(rel_path, ".") != 0){
+                        strncpy(buf+1, rel_path, strlen(rel_path));
+                    }
+                    linksize = strlen(buf);
+                    debug("readlink processing /proc/self/cwd, result: %s, length: %d", buf, linksize);
+                    return linksize;
+                }else{
+                    strcpy(buf, tmp);
+                    linksize = strlen(buf);
+                    debug("readlink processing /proc/self/cwd, result: %s, length: %d", buf, linksize);
+                    return linksize;
+                }
             }
-            proc_tmp = strtok(NULL,":");
+            errno = ENOENT;
+            debug("/proc/self/cwd could not be successfully read");
+            return -1;
         }
     }
 
-    INITIAL_SYS(readlink)
-        if((linksize = real_readlink(path, tmp, MAX_PATH - 1)) == -1){
-            return -1;
+    if(strncmp(path, "/proc/self/exe", strlen("/proc/self/exe")) == 0){
+        pid_t pid = getpid();
+        char pid_path[MAX_PATH];
+        sprintf(pid_path, "/proc/%d/cmdline", pid);
+        //parse cmdline
+        char exec[MAX_PATH];
+        if(parse_cmd_line(pid_path, exec)){
+            strcpy(buf, exec);
+            linksize = strlen(buf);
+            debug("readlink processing /proc/self/exe, result: %s, length: %d", buf, linksize);
+            return linksize;
         }
+
+        errno = ENOENT;
+        debug("/proc/self/exe could not be successfully read");
+        return -1;
+    }
+
+    expand_chroot_path(path);
+
+    if((linksize = real_readlink(path, tmp, MAX_PATH - 1)) == -1){
+        return -1;
+    }
     tmp[linksize] = '\0';
 
     if(*tmp == '/'){
