@@ -85,9 +85,28 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
     dedotdot(name_dup);
 
     const char * container_root = getenv("ContainerRoot");
+    const char * exclude_ex_path = getenv("FAKECHROOT_EXCLUDE_EX_PATH");
     if (*name_dup == '/') {
         if(pathExcluded(name_dup)){
-            strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
+            //here for some specific exclude paths("/sys/fs/kdbus/*"), we modify the path and redirect it into container rather than host
+            bool isfind = false;
+            if(exclude_ex_path){
+                char exclude_ex_path_dup[MAX_PATH];
+                strcpy(exclude_ex_path_dup, exclude_ex_path);
+                char *str_tmp = strtok(exclude_ex_path_dup, ":");
+                while(str_tmp){
+                    if(strncmp(str_tmp, name_dup, strlen(str_tmp)) == 0){
+                        sprintf(resolved, "%s%s", container_root, name_dup);
+                        isfind = true;
+                        break;
+                    }
+                    str_tmp = strtok(NULL,":");
+                }
+            }
+
+            if(!isfind){
+                strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
+            }
         }else{
             if(!findFileInLayers(name_dup, resolved)){
                 const char * container_root = getenv("ContainerRoot");

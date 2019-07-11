@@ -993,7 +993,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            log_debug("start creating dir %s", path);
+        log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -1025,8 +1025,14 @@ bool pathExcluded(const char *abs_path){
 
     const char* data_sync = getenv("FAKECHROOT_DATA_SYNC");
     if(data_sync){
-        if(strncmp(data_sync, resolved, strlen(data_sync)) == 0){
-            return true;
+        char data_sync_dup[MAX_PATH];
+        strcpy(data_sync_dup, data_sync);
+        char *str_tmp = strtok(data_sync_dup, ":");
+        while(str_tmp){
+            if(strncmp(str_tmp, resolved, strlen(str_tmp)) == 0){
+                return true;
+            }
+            str_tmp = strtok(NULL,":");
         }
     }
 
@@ -1048,7 +1054,7 @@ bool pathExcluded(const char *abs_path){
 bool resolveSymlink(const char *link, char *target){
     if(is_file_type(link,TYPE_LINK)){
         INITIAL_SYS(readlink)
-            char resolved[MAX_PATH];
+        char resolved[MAX_PATH];
         ssize_t size = real_readlink(link,resolved,MAX_PATH - 1);
         if(size == -1){
             log_fatal("can't resolve link %s",link);
