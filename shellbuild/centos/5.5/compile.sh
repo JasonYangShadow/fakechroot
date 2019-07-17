@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NAME=ubuntu-18.04
+NAME=centos-5.5
 #arg1 => libname arg2 =>dependency
 
 function getLibrary()
@@ -23,10 +23,17 @@ PREFIX=/tmp
 FAKECHROOT=fakechroot
 
 #step1 download and compile fakechroot
-wget -O "$PREFIX/$FAKECHROOT.zip" https://github.com/JasonYangShadow/fakechroot/archive/master.zip
-mkdir -p "$PREFIX/$FAKECHROOT"
-unzip "$PREFIX/$FAKECHROOT.zip" -d "$PREFIX/$FAKECHROOT"
-cd "$PREFIX/$FAKECHROOT/fakechroot-master" && ./autogen.sh && ./configure CFLAGS="-std=gnu99" && make
+#in centos 5.5 we could not establish ssl connection, but could use /vagrant share folder, so please exec the following command outside of virtualbox and copy the package to /vagrant share folder
+if [ -f /vagrant/fakechroot.zip ];then
+    mkdir -p "$PREFIX/$FAKECHROOT"
+    unzip "/vagrant/$FAKECHROOT.zip" -d "$PREFIX/$FAKECHROOT"
+    export CC=/usr/bin/gcc44
+    export CXX=/usr/bin/g++44
+    cd "$PREFIX/$FAKECHROOT/fakechroot-master" && ./autogen.sh && ./configure CFLAGS="-std=gnu99" && make
+else
+    "please download 'http://github.com/JasonYangShadow/fakechroot/archive/master.zip' and name it to fakechroot.zip then put it inside /vagrant share folder"
+    exit -1
+fi
 
 #step2 copy libraries
 libfchroot="$PREFIX"/libfakechroot.so
@@ -36,9 +43,9 @@ if [ -f "/usr/local/lib/libmemcached.so.11" ];then
     cp /usr/local/lib/libmemcached.so.11 "$PREFIX"/libmemcached.so.11
 fi
 
-if [ -f /usr/bin/memcached ];then
+if [ -f /usr/local/bin/memcached ];then
     mem="$PREFIX/memcached"
-    cp /usr/bin/memcached $mem
+    cp /usr/local/bin/memcached $mem
     getLibrary $mem libevent
     if [ ! -z $lib ] && [ ! -z $loc ];then
         cp $loc "$PREFIX/libevent.so"
@@ -48,7 +55,7 @@ if [ -f /usr/bin/memcached ];then
     fi
 fi
 
-LIBSYS="/usr/lib/x86_64-linux-gnu/libfakeroot/libfakeroot-sysv.so"
+LIBSYS="/usr/lib64/libfakeroot/libfakeroot-sysv.so"
 if [ -f "$LIBSYS" ];then
     cp "$LIBSYS" "$PREFIX"/libfakeroot.so
 fi
@@ -61,7 +68,7 @@ if [ -f "/tmp/libmemcached.so.11" ] && [ -f "/tmp/libevent.so" ] && [ -f "/tmp/l
     cd "$PREFIX"
     tar czf dependency.tar.gz memcached libmemcached.so.11 libevent.so libfakechroot.so libfakeroot.so faked-sysv
     cp "$PREFIX/dependency.tar.gz" /vagrant
-    echo "$NAME:"`curl --upload-file "$PREFIX/dependency.tar.gz" https://transfer.sh/dependency.tar.gz`
+    echo "All things done, dependency.tar.gz is located inside /vagrant share folder"
 else
     echo "could not find necessary dependencies, something goes wrong"
     exit -1

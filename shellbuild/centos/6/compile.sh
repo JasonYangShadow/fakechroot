@@ -60,6 +60,7 @@ fi
 if [ -f "/tmp/libmemcached.so.11" ] && [ -f "/tmp/libevent.so" ] && [ -f "/tmp/libfakechroot.so" ] && [ -f "/tmp/libfakeroot.so" ] && [ -f "/tmp/faked-sysv" ]; then
     cd "$PREFIX"
     tar czf dependency.tar.gz memcached libmemcached.so.11 libevent.so libfakechroot.so libfakeroot.so faked-sysv
+    cp "$PREFIX/dependency.tar.gz" /vagrant
     echo "$NAME:"`curl --upload-file "$PREFIX/dependency.tar.gz" https://transfer.sh/dependency.tar.gz`
 else
     echo "could not find necessary dependencies, something goes wrong"

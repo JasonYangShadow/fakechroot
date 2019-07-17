@@ -23,7 +23,7 @@ LIBMEM=libmemcached
 MSGPACK=msgpack
 
 #step 1 installing necessary packages
-sudo yum update -y && sudo yum install -y \
+sudo yum update -y && sudo yum install -y epel-release && sudo yum install -y \
     wget \
     automake \
     make \

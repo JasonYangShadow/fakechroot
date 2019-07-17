@@ -20,6 +20,7 @@ function getLibrary()
 PREFIX=/tmp
 AUTOCONF=autoconf
 LIBMEM=libmemcached
+CMAKE=cmake
 MSGPACK=msgpack
 
 #step 1 installing necessary packages
@@ -34,7 +35,8 @@ sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     fakeroot \
     libssl-dev \
     memcached \
-    unzip
+    unzip \
+    curl
 
 #step 2.1 build system initialization
 wget -O "$PREFIX/$AUTOCONF.tar.gz" https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
@@ -46,12 +48,16 @@ tar xzvf "$PREFIX/$AUTOCONF.tar.gz" -C "$PREFIX/$AUTOCONF" --strip-components=1 
 wget -O "$PREFIX/$LIBMEM.tar.gz" https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz
 mkdir -p "$PREFIX/$LIBMEM"
 tar xzvf "$PREFIX/$LIBMEM.tar.gz" -C "$PREFIX/$LIBMEM" --strip-components=1 && cd "$PREFIX/$LIBMEM"
-#we have to patch libmemcached on ubuntu 18.04
-wget -O "$LIBMEM.patch" https://src.fedoraproject.org/rpms/libmemcached/raw/HEAD/f/libmemcached-build.patch
-patch ./clients/memflush.cc "$LIBMEM.patch"
 ./configure && make && sudo make install
 
 #step 3 download and compile msgpack locally
+#first upgrade cmake firstly
+wget -O "$PREFIX/$CMAKE.tar.gz" http://www.cmake.org/files/v2.8/cmake-2.8.12.1.tar.gz
+mkdir -p "$PREFIX/$CMAKE"
+tar xzvf "$PREFIX/$CMAKE.tar.gz" -C "$PREFIX/$CMAKE" --strip-compnents=1 && cd "$PREFIX/$CMAKE"
+./bootstrap && make && sudo make install
+
+#then compiling msgpack
 wget -O "$PREFIX/$MSGPACK.zip" https://github.com/msgpack/msgpack-c/archive/master.zip
 mkdir -p "$PREFIX/$MSGPACK"
 unzip "$PREFIX/$MSGPACK.zip" -d "$PREFIX/$MSGPACK"
