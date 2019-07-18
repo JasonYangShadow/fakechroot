@@ -26,7 +26,7 @@ function run(){
             wget -O compile.sh "$GITHUB$N1/$N2/compile.sh"
         fi
         if [ ! -f Vagrantfile ]; then
-            wget -O Vagrantfile "$GITHUB$N1/$N2/Vagrantfile"
+            wget -O Vagrantfile "$GITHUB$N1/$N2/Vagrantfile_run"
         fi
         # init
         vagrant up

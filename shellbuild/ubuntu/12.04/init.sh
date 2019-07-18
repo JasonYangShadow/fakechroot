@@ -54,13 +54,13 @@ tar xzvf "$PREFIX/$LIBMEM.tar.gz" -C "$PREFIX/$LIBMEM" --strip-components=1 && c
 #first upgrade cmake firstly
 wget -O "$PREFIX/$CMAKE.tar.gz" http://www.cmake.org/files/v2.8/cmake-2.8.12.1.tar.gz
 mkdir -p "$PREFIX/$CMAKE"
-tar xzvf "$PREFIX/$CMAKE.tar.gz" -C "$PREFIX/$CMAKE" --strip-compnents=1 && cd "$PREFIX/$CMAKE"
+tar xzvf "$PREFIX/$CMAKE.tar.gz" -C "$PREFIX/$CMAKE" --strip-components=1 && cd "$PREFIX/$CMAKE"
 ./bootstrap && make && sudo make install
 
 #then compiling msgpack
 wget -O "$PREFIX/$MSGPACK.zip" https://github.com/msgpack/msgpack-c/archive/master.zip
 mkdir -p "$PREFIX/$MSGPACK"
 unzip "$PREFIX/$MSGPACK.zip" -d "$PREFIX/$MSGPACK"
-cd "$PREFIX/$MSGPACK/msgpack-c-master" && cmake . && make && sudo make install
+cd "$PREFIX/$MSGPACK/msgpack-c-master" && /usr/local/bin/cmake . && make && sudo make install
 
 echo "Dependencies are installed and configured successfully!"
