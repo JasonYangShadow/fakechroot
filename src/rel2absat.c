@@ -117,6 +117,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     dedotdot(name_dup);
 
     const char * container_root = getenv("ContainerRoot");
+    const char * exclude_ex_path = getenv("FAKECHROOT_EXCLUDE_EX_PATH");
     if (*name_dup == '/') {
         if(pathExcluded(name_dup)){
             //here for some specific exclude paths("/sys/fs/kdbus/*"), we modify the path and redirect it into container rather than host
