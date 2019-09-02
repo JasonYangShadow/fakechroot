@@ -166,7 +166,7 @@ LOCAL int fakechroot_localdir(const char* p_path)
     if (p_path[0] != '/') {
         getcwd_real(cwd_path, FAKECHROOT_PATH_MAX);
         v_path = cwd_path;
-        narrow_chroot_path(v_path);
+        //narrow_chroot_path(v_path);
     }
 
     /* We try to find if we need direct access to a file */

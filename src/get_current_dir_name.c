@@ -34,7 +34,7 @@ wrapper(get_current_dir_name, char *, (void))
         return NULL;
     }
     oldptr = cwd;
-    narrow_chroot_path(cwd);
+    //narrow_chroot_path(cwd);
     if (cwd == NULL) {
         return NULL;
     }

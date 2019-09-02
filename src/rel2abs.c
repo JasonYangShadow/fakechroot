@@ -77,7 +77,7 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
     }
 
     getcwd_real(cwd, FAKECHROOT_PATH_MAX);
-    narrow_chroot_path(cwd);
+    //narrow_chroot_path(cwd);
 
     //preprocess name
     char name_dup[FAKECHROOT_PATH_MAX];
