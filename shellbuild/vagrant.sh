@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DISTROS=(jasonyangshadow/ubuntu-18.04 jasonyangshadow/ubuntu-16.04 jasonyangshadow/ubuntu-14.04 jasonyangshadow/ubuntu-12.04 jasonyangshadow/centos-6 jasonyangshadow/centos-7 jasonyangshadow/centos-5.5)
+DISTROS=(jasonyangshadow/ubuntu-19.04 jasonyangshadow/ubuntu-18.04 jasonyangshadow/ubuntu-16.04 jasonyangshadow/ubuntu-14.04 jasonyangshadow/ubuntu-12.04 jasonyangshadow/centos-6 jasonyangshadow/cent-6.7 jasonyangshadow/centos-7 jasonyangshadow/centos-5.5)
 TARGETDIR=`pwd`/LPMXBuild
 GITHUB=https://raw.githubusercontent.com/JasonYangShadow/fakechroot/master/shellbuild/
 
