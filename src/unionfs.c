@@ -1200,11 +1200,11 @@ int fufs_open_impl(const char* function, ...){
     va_end(args);
 
     INITIAL_SYS(open)
-        INITIAL_SYS(openat)
-        INITIAL_SYS(open64)
-        INITIAL_SYS(openat64)
+    INITIAL_SYS(openat)
+    INITIAL_SYS(open64)
+    INITIAL_SYS(openat64)
 
-        char destpath[MAX_PATH];
+    char destpath[MAX_PATH];
     strcpy(destpath, path);
     //not exists or excluded directly calling real open
     if(!xstat(path) || pathExcluded(path)){
