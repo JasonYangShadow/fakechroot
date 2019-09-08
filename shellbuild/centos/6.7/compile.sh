@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NAME=centos-6
+NAME=centos-6.7
 #arg1 => libname arg2 =>dependency
 
 function getLibrary()

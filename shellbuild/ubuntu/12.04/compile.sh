@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NAME=ubuntu-14.04
+NAME=ubuntu-12.04
 #arg1 => libname arg2 =>dependency
 
 function getLibrary()
