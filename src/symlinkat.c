@@ -38,7 +38,7 @@ wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpat
         char layer_path[MAX_PATH];
         int ret = get_relative_path_layer(oldpath, rel_path, layer_path);
         if(ret == 0){
-            strcpy(old_resolved, oldpath);
+            sprintf(old_resolved, "%s/%s", layer_path, rel_path);
         }else{
             const char * container_root = getenv("ContainerRoot");
             sprintf(old_resolved, "%s%s", container_root, oldpath);
