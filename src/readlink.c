@@ -40,12 +40,12 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
 
     INITIAL_SYS(readlink)
 
-        //processing /proc/self/cwd /proc/self/exe /proc/self/root
-        if(strncmp(path,"/proc/self/root", strlen("/proc/self/root")) == 0){
-            strcpy(buf,"/");
-            linksize = 1;
-            return linksize;
-        }
+    //processing /proc/self/cwd /proc/self/exe /proc/self/root
+    if(strncmp(path,"/proc/self/root", strlen("/proc/self/root")) == 0){
+        strcpy(buf,"/");
+        linksize = 1;
+        return linksize;
+    }
 
     if(strncmp(path, "/proc/self/cwd", strlen("/proc/self/cwd")) == 0){
         if(is_file_type(path, TYPE_LINK)){

@@ -36,7 +36,7 @@
 #include "open.h"
 #include "unionfs.h"
 
-
+/**
 LOCAL char * rel2absat(int dirfd, const char * name, char * resolved)
 {
     int cwdfd = 0;
@@ -94,6 +94,7 @@ error:
     debug("rel2absat(%d, \"%s\", NULL)", dirfd, name);
     return resolved;
 }
+**/
 
 LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
 {
@@ -154,6 +155,12 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     } else if(dirfd == AT_FDCWD) {
         if (!getcwd(cwd, FAKECHROOT_PATH_MAX)) {
             goto error;
+        }
+
+        //if cwd is excluded path
+        if(pathExcluded(cwd)){
+            sprintf(resolved,"%s/%s", cwd, name_dup);
+            goto end;
         }
 
         /******************************************/

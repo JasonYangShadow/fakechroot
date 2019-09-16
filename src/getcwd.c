@@ -34,6 +34,11 @@ wrapper(getcwd, char *, (char * buf, size_t size))
         return NULL;
     }
 
+    if(pathExcluded(cwd)){
+        buf = cwd;
+        return cwd;
+    }
+
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(cwd, rel_path, layer_path);

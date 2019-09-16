@@ -50,8 +50,7 @@ LOCAL char * rel2abs(const char * name, char * resolved)
 
     if (*name == '/') {
         strlcpy(resolved, name, FAKECHROOT_PATH_MAX);
-    }
-    else {
+    }else {
         snprintf(resolved, FAKECHROOT_PATH_MAX, "%s/%s", cwd, name);
     }
 

@@ -993,7 +993,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-        log_debug("start creating dir %s", path);
+            log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -1062,6 +1062,20 @@ bool resolveSymlink(const char *link, char *target){
             return false;
         }else{
             resolved[size] = '\0';
+            //here we have to add checking relative/absolute checking
+            if(*resolved != '/'){
+               char cwd[MAX_PATH];
+               getcwd(cwd, MAX_PATH);
+               if(cwd){
+                   char abs_path[MAX_PATH];
+                   sprintf(abs_path,"%s/%s", cwd, resolved);
+                   memset(resolved, '\0', MAX_PATH);
+                   strcpy(resolved, abs_path);
+               }else{
+                   log_fatal("can't get cwd");
+                   return false;
+               }
+            }
             if(pathExcluded(resolved)){
                 strcpy(target,resolved);
                 return true;
@@ -1207,12 +1221,23 @@ int fufs_open_impl(const char* function, ...){
     char destpath[MAX_PATH];
     strcpy(destpath, path);
     //not exists or excluded directly calling real open
-    if(!xstat(path) || pathExcluded(path)){
+    if(!lxstat(path) || pathExcluded(path)){
         if(oflag & O_DIRECTORY){
             goto end_folder;
         }
         goto end_file;
     }else{
+        //check if it is symlink
+        if(is_file_type(path, TYPE_LINK)){
+            char link_resolved[MAX_PATH];
+            if(!resolveSymlink(path, link_resolved)){
+                goto err;
+            }
+            memset(destpath, '\0', MAX_PATH);
+            strcpy(destpath, link_resolved);
+            log_debug("open resolves link: %s, target: %s", path, destpath);
+        }
+
         //if it exists, then copy and write
         char rel_path[MAX_PATH];
         char layer_path[MAX_PATH];
@@ -1232,33 +1257,6 @@ int fufs_open_impl(const char* function, ...){
                 //read only
                 if(oflag == 0){
                     goto end_file;
-                }
-
-                //check if it is symlink
-                if(is_file_type(path, TYPE_LINK)){
-                    char link[MAX_PATH];
-                    if(readlink(path, link, MAX_PATH) != -1){
-                        if(link[0] != '/'){
-                            char dir[MAX_PATH], dest[MAX_PATH];
-                            strcpy(dir, path);
-                            dirname(dir);
-                            sprintf(dest, "%s/%s", dir, link);
-                            memset(destpath,'\0',MAX_PATH);
-                            if(!copyFile2RW(dest, destpath)){
-                                log_fatal("copy from %s to %s encounters error", dest, destpath);
-                                return -1;
-                            }
-                            dedotdot(destpath);
-                            goto end;
-                        }else{
-                            memset(destpath,'\0',MAX_PATH);
-                            if(!copyFile2RW(link, destpath)){
-                                log_fatal("copy from %s to %s encounters error", link, destpath);
-                                return -1;
-                            }
-                            goto end;
-                        }
-                    }
                 }
 
                 //copy and write
@@ -1304,7 +1302,7 @@ end_file:
     goto end;
 
 end:
-    log_debug("%s ends", function);
+    log_debug("%s %s ends", function, destpath);
     if(strcmp(function,"openat") == 0){
         return RETURN_SYS(openat,(dirfd,destpath,oflag,mode))
     }
