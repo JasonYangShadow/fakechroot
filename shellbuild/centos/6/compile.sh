@@ -22,6 +22,7 @@ function getLibrary()
 PREFIX=/tmp
 FAKECHROOT=fakechroot
 
+sudo rm -rf "$PREFIX/*"
 #step1 download and compile fakechroot
 wget -O "$PREFIX/$FAKECHROOT.zip" https://github.com/JasonYangShadow/fakechroot/archive/master.zip
 mkdir -p "$PREFIX/$FAKECHROOT"

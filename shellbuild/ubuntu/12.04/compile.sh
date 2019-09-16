@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NAME=ubuntu-12.04
+NAME=ubuntu-14.04
 #arg1 => libname arg2 =>dependency
 
 function getLibrary()
@@ -22,6 +22,7 @@ function getLibrary()
 PREFIX=/tmp
 FAKECHROOT=fakechroot
 
+sudo rm -rf "$PREFIX/*"
 #step1 download and compile fakechroot
 wget -O "$PREFIX/$FAKECHROOT.zip" https://github.com/JasonYangShadow/fakechroot/archive/master.zip
 mkdir -p "$PREFIX/$FAKECHROOT"
