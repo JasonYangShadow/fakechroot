@@ -28,6 +28,7 @@
 wrapper(symlink, int, (const char * oldpath, const char * newpath))
 {
     char old_resolved[MAX_PATH];
+    /**
     if(*oldpath == '/'){
         expand_chroot_path(oldpath);
         char rel_path[MAX_PATH];
@@ -43,6 +44,8 @@ wrapper(symlink, int, (const char * oldpath, const char * newpath))
     }else{
         strcpy(old_resolved, oldpath);
     }
+    **/
+    strcpy(old_resolved, oldpath);
     dedotdot(old_resolved);
 
     char new_resolved[MAX_PATH];

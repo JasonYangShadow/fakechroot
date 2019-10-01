@@ -15,7 +15,7 @@ void set_log_fp(FILE *fp){
 
 void loginfo(enum LOG_LEVEL level, const char * file, int line, char *fmt, ...){
     char *log_level= getenv("FAKECHROOT_LOG_LEVEL");
-    char *log_switch = getenv("FAKECHROOT_LOG_SWITCH");
+    char *log_switch = getenv("FAKECHROOT_DEBUG");
 
     if(log_switch){
       slog.l_switch = true;

@@ -32,6 +32,7 @@
 #include "getcwd_real.h"
 #include "unionfs.h"
 
+/**
 LOCAL char * rel2abs(const char * name, char * resolved)
 {
     char cwd[FAKECHROOT_PATH_MAX];
@@ -61,11 +62,12 @@ end:
     debug("rel2abs(\"%s\", \"%s\")", name, resolved);
     return resolved;
 }
+**/
 
 LOCAL char * rel2absLayer(const char * name, char * resolved){
     char cwd[FAKECHROOT_PATH_MAX];
 
-    //debug("rel2absLayer starts(\"%s\", &resolved)", name);
+    debug("rel2absLayer starts(\"%s\", &resolved)", name);
     if (name == NULL){
         resolved = NULL;
         goto end;
@@ -76,7 +78,7 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
     }
 
     getcwd_real(cwd, FAKECHROOT_PATH_MAX);
-    //narrow_chroot_path(cwd);
+    debug("rel2absLayer current cwd: %s", cwd);
 
     //preprocess name
     char name_dup[FAKECHROOT_PATH_MAX];
@@ -107,6 +109,7 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
                 strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
             }
         }else{
+            //we check if existing in other layers
             if(!findFileInLayers(name_dup, resolved)){
                 const char * container_root = getenv("ContainerRoot");
                 char rel_path[FAKECHROOT_PATH_MAX];
@@ -128,9 +131,10 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
         //test if the path exists in container layers
         int ret = get_relative_path_layer(tmp, rel_path, layer_path);
         bool b_resolved = false;
+        debug("rel2abs get relative path info, path: %s, rel_path: %s, layer_path: %s, ret: %d", tmp, rel_path, layer_path, ret);
         if(ret == 0){
-            //exists?
-            if(xstat(tmp)){
+            //exists?  here we have to use lxstat because some files are symlinks
+            if(lxstat(tmp)){
                 snprintf(resolved,FAKECHROOT_PATH_MAX,"%s",tmp);
                 goto end;
             }else{
@@ -142,14 +146,14 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
                     for(size_t i = 0; i< num; i++){
                         char tmp[FAKECHROOT_PATH_MAX];
                         sprintf(tmp, "%s/%s", paths[i], rel_path);
-                        if(!xstat(tmp)){
-                            //debug("rel2absLayer failed resolved: %s",tmp);
+                        if(!lxstat(tmp)){
+                            debug("rel2absLayer failed resolved: %s",tmp);
                             if(getParentWh(tmp)){
                                 break;
                             }
                             continue;
                         }else{
-                            //debug("rel2absLayer successfully resolved: %s",tmp);
+                            debug("rel2absLayer successfully resolved: %s",tmp);
                             snprintf(resolved,FAKECHROOT_PATH_MAX,"%s",tmp);
                             b_resolved = true;
                             break;

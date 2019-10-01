@@ -174,9 +174,20 @@ skip2: ;
     char orig_filename[FAKECHROOT_PATH_MAX];
     strcpy(orig_filename, filename);
 
+    //here we have to check if filename is symlink
     expand_chroot_path(filename);
-    strcpy(tmp, filename);
-    filename = tmp;
+    if(lxstat(filename) && is_file_type(filename, TYPE_LINK)){
+        debug("nextcall(execve) symlink found: %s", filename);
+        while(is_file_type(filename, TYPE_LINK)){
+            char link_resolved[FAKECHROOT_PATH_MAX];
+            resolveSymlink(filename, link_resolved);
+            filename = link_resolved;
+            expand_chroot_path(filename);
+        }
+    }else{
+        strcpy(tmp, filename);
+        filename = tmp;
+    }
 
     //when the target does not exist
     if ((file = nextcall(open)(filename, O_RDONLY)) == -1) {

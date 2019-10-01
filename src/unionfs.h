@@ -37,7 +37,6 @@
 
 //cross file vars declaration
 struct dirent_obj* darr_list[MAX_ITEMS];
-
 enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
 
 // declaration ends
@@ -125,6 +124,8 @@ struct dirent_obj* listDir(const char *path, int *num);
 bool is_container_root(const char *abs_path);
 bool is_inside_container(const char *abs_path);
 bool parse_cmd_line(const char *cmdline, char *execute);
+bool split_path(const char *path, char *parent, char *base);
+bool str_in_array(const char *str, const char **array, int num);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

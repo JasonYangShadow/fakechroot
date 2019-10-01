@@ -628,7 +628,7 @@ int append_to_diff(const char* content)
 bool is_file_type(const char* path, enum filetype t)
 {
     INITIAL_SYS(__lxstat)
-        struct stat path_stat;
+    struct stat path_stat;
     int ret = real___lxstat(1,path, &path_stat);
     if (ret == 0) {
         switch (t) {
@@ -641,12 +641,12 @@ bool is_file_type(const char* path, enum filetype t)
             case TYPE_SOCK:
                 return S_ISSOCK(path_stat.st_mode);
             default:
-                log_fatal("filetype is not recognized");
+                log_fatal("is_file_type processes file: %s with unrecognized type", path);
                 break;
         }
         return false;
     } else {
-        log_fatal(strerror(errno));
+        log_fatal("is_file_type processes file: %s with error: %s", path, strerror(errno));
         return false;
     }
 }
@@ -1051,90 +1051,138 @@ bool pathExcluded(const char *abs_path){
     return false;
 }
 
+//this function is used for resolving symlink on different situations
+// 1: file -> file2
+// 2: file -> /path1/file2
+// 3: file -> bin/file2
+// 4: file -> ../path1/file2
 bool resolveSymlink(const char *link, char *target){
-    if(is_file_type(link,TYPE_LINK)){
+    log_debug("resolve symlink starts: %s", link);
+    if(lxstat(link) && is_file_type(link, TYPE_LINK)){
         INITIAL_SYS(readlink)
         char resolved[MAX_PATH];
-        ssize_t size = real_readlink(link,resolved,MAX_PATH - 1);
+        ssize_t size = real_readlink(link, resolved, MAX_PATH-1);
         if(size == -1){
-            log_fatal("can't resolve link %s",link);
+            log_fatal("can't resolve link %s", link);
             strcpy(target,link);
             return false;
         }else{
             resolved[size] = '\0';
-            //here we have to add checking relative/absolute checking
-            if(*resolved != '/'){
-               char cwd[MAX_PATH];
-               getcwd(cwd, MAX_PATH);
-               if(cwd){
+            char rel_path[MAX_PATH];
+            char layer_path[MAX_PATH];
+            int ret = get_relative_path_layer(link, rel_path, layer_path);
+            log_debug("resolve symlink, ret: %d, resolved: %s, abs_path: %s, rel_path: %s, layer_path: %s", ret, resolved, link, rel_path, layer_path);
+            if(ret == 0){
+                if(*resolved != '/'){
+                    //here there are 4 different formats 
+                    // 1: file -> file2
+                    // 2: file -> /path1/file2
+                    // 3: file -> bin/file2
+                    // 4: file -> ../path1/file2
+                    //
+                    // 2 is not handled here
+                    // we only have to handle 1,3,4 here
                    char abs_path[MAX_PATH];
-                   sprintf(abs_path,"%s/%s", cwd, resolved);
+                   if(strstr(resolved,"/") != NULL && strncmp(resolved,"..",2) !=0 ){
+                       //handle 3
+                       sprintf(abs_path, "/%s", resolved);
+                   }else if(strncmp(resolved,"..",2) == 0 && strstr(resolved, "/") != NULL){
+                       //handle 4
+                       if(*rel_path == '.'){
+                           sprintf(abs_path, "/%s", resolved);
+                       }else{
+                           sprintf(abs_path, "/%s/%s", rel_path, resolved);
+                       }
+                   }else{
+                       //handle 1
+                       if(*rel_path == '.'){
+                           sprintf(abs_path, "/%s", resolved);
+                       }else{
+                           char parent[MAX_PATH];
+                           char base[MAX_PATH];
+                           bool ret = split_path(rel_path, parent, base);
+                           log_debug("resolve symlink splits path: %s, parent: %s, base: %s", rel_path, parent, base);
+                           if(ret){
+                               sprintf(abs_path, "/%s/%s", parent, resolved);
+                           }else{
+                               sprintf(abs_path, "/%s", resolved);
+                           }
+                       }
+                   }
+                   //reset and copy to resolved
                    memset(resolved, '\0', MAX_PATH);
                    strcpy(resolved, abs_path);
-               }else{
-                   log_fatal("can't get cwd");
-                   return false;
-               }
-            }
-            if(pathExcluded(resolved)){
-                strcpy(target,resolved);
-                return true;
-            }else{
-                char ** paths;
-                size_t num;
-                paths = getLayerPaths(&num);
-                bool b_resolved = false;
-                if(num > 0){
-                    char tmp[MAX_PATH];
-                    for(size_t i = 0; i< num; i++){
-                        memset(tmp,'\0',MAX_PATH);
-                        if(*resolved == '/'){
-                            sprintf(tmp, "%s%s", paths[i],resolved);
-                        }else{
-                            sprintf(tmp, "%s/%s", paths[i],resolved);
-                        }
-                        if(!xstat(tmp)){
-                            log_debug("symlink failed resolved: %s",tmp);
-                            if(getParentWh(tmp)){
+                } // here we convert path to absolute path according to container base path. i.e, /p1/f1
+
+
+                //then we start finding the correct absolute path based on container layers
+                if(pathExcluded(resolved)){
+                    strcpy(target,resolved);
+                    return true;
+                }else{
+                    char ** paths;
+                    size_t num;
+                    paths = getLayerPaths(&num);
+                    bool b_resolved = false;
+                    if(num > 0){
+                        char tmp[MAX_PATH];
+                        for(size_t i = 0; i< num; i++){
+                            memset(tmp,'\0',MAX_PATH);
+                            if(*resolved == '/'){
+                                sprintf(tmp, "%s%s", paths[i],resolved);
+                            }else{
+                                sprintf(tmp, "%s/%s", paths[i],resolved);
+                            }
+                            if(!xstat(tmp)){
+                                log_debug("symlink failed resolved: %s",tmp);
+                                if(getParentWh(tmp)){
+                                    break;
+                                }
+                                continue;
+                            }else{
+                                log_debug("symlink successfully resolved: %s",tmp);
+                                char tmp_solved[MAX_PATH];
+                                snprintf(tmp_solved,MAX_PATH,"%s",tmp);
+                                b_resolved = true;
+                                strcpy(target,tmp_solved);
                                 break;
                             }
-                            continue;
-                        }else{
-                            log_debug("symlink successfully resolved: %s",tmp);
-                            char tmp_solved[MAX_PATH];
-                            snprintf(tmp_solved,MAX_PATH,"%s",tmp);
-                            b_resolved = true;
-                            strcpy(target,tmp_solved);
-                            break;
                         }
-
                     }
+                    if(paths){
+                        for(int i = 0; i < num; i++){
+                            debug_free(paths[i]);
+                        }
+                        debug_free(paths);
+                    }
+                    if(!b_resolved){
+                        const char * container_root = getenv("ContainerRoot");
+                        char tmp[MAX_PATH];
+                        if(*resolved == '/'){
+                            snprintf(tmp, MAX_PATH,"%s%s",container_root,resolved);
+                        }else{
+                            snprintf(tmp, MAX_PATH,"%s/%s",container_root,resolved);
+                        }
+                        strcpy(target,tmp);
+                        return false;
+                    }
+                    return true;
                 }
-                if(paths){
-                    for(int i = 0; i < num; i++){
-                        debug_free(paths[i]);
-                    }
-                    debug_free(paths);
-                }
-                if(!b_resolved){
-                    const char * container_root = getenv("ContainerRoot");
-                    char tmp[MAX_PATH];
-                    if(*resolved == '/'){
-                        snprintf(tmp, MAX_PATH,"%s%s",container_root,resolved);
-                    }else{
-                        snprintf(tmp, MAX_PATH,"%s/%s",container_root,resolved);
-                    }
-                    strcpy(target,tmp);
+            }else{
+                //not inside container
+                if(!pathExcluded(link)){
+                    log_fatal("resolve symlink path: %s escaped from container", link);
+                    strcpy(target, link);
                     return false;
                 }
-                return true;
             }
         }
     }else{
-        strcpy(target,link);
+        strcpy(target, link);
         return false;
     }
 }
+
 
 //in the root path of any layers
 bool is_container_root(const char *abs_path){
@@ -1193,6 +1241,34 @@ bool pathIncluded(const char *abs_path){
     }
     return false;
 
+}
+
+bool split_path(const char *path, char *parent, char *base){
+    if(path == NULL || *path == '\0'){
+        return false;
+    }
+    char *ret = strrchr(path, '/');
+    if(ret == NULL){
+        return false;
+    }
+    memset(parent, '\0', MAX_PATH);
+    memset(base, '\0', MAX_PATH);
+    strncpy(parent, path, (strlen(path) - strlen(ret)));
+    strcpy(base, ret+1);
+    return true;
+}
+
+bool str_in_array(const char *str, const char **array, int num){
+    if(str == NULL || array == NULL || num <= 0){
+        return false;
+    }
+
+    for(int i = 0; i< num; i++){
+        if(strncmp(str, array[i], strlen(array[i])) == 0){
+            return true;
+        }
+    }
+    return false;
 }
 
 /**----------------------------------------------------------------------------------**/
@@ -1769,6 +1845,10 @@ int fufs_mkdir_impl(const char* function,...){
     }
     va_end(args);
 
+    if(pathExcluded(abs_path)){
+        log_debug("mkdir %s ends", abs_path);
+        return recurMkdirMode(abs_path,mode);
+    }
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(abs_path,rel_path,layer_path);
@@ -2016,6 +2096,10 @@ int fufs_rmdir_impl(const char* function, ...){
     const char * path = va_arg(args, const char *);
     va_end(args);
 
+    if(pathExcluded(path)){
+        INITIAL_SYS(rmdir)
+        return real_rmdir(path);
+    }
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(path, rel_path, layer_path);
@@ -2025,9 +2109,9 @@ int fufs_rmdir_impl(const char* function, ...){
     }
 
     INITIAL_SYS(mkdir)
-        INITIAL_SYS(creat)
+    INITIAL_SYS(creat)
 
-        const char * container_root = getenv("ContainerRoot");
+    const char * container_root = getenv("ContainerRoot");
 
     char * bname = basename(rel_path);
     char dname[MAX_PATH];
@@ -2038,7 +2122,7 @@ int fufs_rmdir_impl(const char* function, ...){
         //1. folder does not exist in another other layers, then delete it directly
         //2. folder exists in other layers, create wh and check all content inside is wh files, clear them
         INITIAL_SYS(rmdir)
-            char layers_resolved[MAX_PATH];
+        char layers_resolved[MAX_PATH];
         if(!findFileInLayersSkip(path, layers_resolved, 1)){
             goto end;
         }
@@ -2061,7 +2145,7 @@ int fufs_rmdir_impl(const char* function, ...){
         close(fd);
         if(xstat(path) && is_file_type(path, TYPE_DIR)){
             INITIAL_SYS(unlink)
-                char **names;
+            char **names;
             size_t num;
             getDirentsOnlyNames(path, &names,&num);
             bool is_all_wh = false;

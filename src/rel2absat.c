@@ -101,7 +101,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
     int cwdfd = 0;
     char cwd[FAKECHROOT_PATH_MAX];
 
-    //debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
+    debug("rel2absatLayer starts(%d, \"%s\", &resolved)", dirfd, name);
     if (name == NULL) {
         resolved = NULL;
         goto end;
@@ -178,7 +178,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
         bool b_resolved = false;
         if(ret == 0){
             //exists?
-            if(xstat(tmp)){
+            if(lxstat(tmp)){
                 snprintf(resolved,FAKECHROOT_PATH_MAX,"%s",tmp);
                 goto end;
             }else{
@@ -255,7 +255,7 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
         bool b_resolved = false;
         if(ret == 0){
             //exists?
-            if(xstat(tmp)){
+            if(lxstat(tmp)){
                 snprintf(resolved,FAKECHROOT_PATH_MAX,"%s",tmp);
                 goto end;
             }else{
@@ -267,14 +267,14 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
                     for(size_t i = 0; i< num; i++){
                         char tmp[FAKECHROOT_PATH_MAX];
                         sprintf(tmp, "%s/%s", paths[i], rel_path);
-                        if(!xstat(tmp)){
-                            //debug("rel2absLayer failed resolved: %s",tmp);
+                        if(!lxstat(tmp)){
+                            debug("rel2absLayer failed resolved: %s",tmp);
                             if(getParentWh(tmp)){
                                 break;
                             }
                             continue;
                         }else{
-                            //debug("rel2absLayer successfully resolved: %s",tmp);
+                            debug("rel2absLayer successfully resolved: %s",tmp);
                             snprintf(resolved,FAKECHROOT_PATH_MAX,"%s",tmp);
                             b_resolved = true;
                             break;
