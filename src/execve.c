@@ -178,7 +178,7 @@ skip2: ;
     expand_chroot_path(filename);
     if(lxstat(filename) && is_file_type(filename, TYPE_LINK)){
         debug("nextcall(execve) symlink found: %s", filename);
-        while(is_file_type(filename, TYPE_LINK)){
+        while(lxstat(filename) && is_file_type(filename, TYPE_LINK)){
             char link_resolved[FAKECHROOT_PATH_MAX];
             resolveSymlink(filename, link_resolved);
             filename = link_resolved;

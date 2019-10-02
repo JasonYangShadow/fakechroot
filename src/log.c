@@ -19,6 +19,7 @@ void loginfo(enum LOG_LEVEL level, const char * file, int line, char *fmt, ...){
 
     if(log_switch){
       slog.l_switch = true;
+      slog.l_level = DEBUG;
     }else{
       slog.l_switch = false;
     }
@@ -31,27 +32,27 @@ void loginfo(enum LOG_LEVEL level, const char * file, int line, char *fmt, ...){
     }
 
     if(slog.l_switch){
-    time_t t = time(NULL);
-    struct tm *lt = localtime(&t);
-    char buff_time[BUFF_TIME_SIZE];
-    char buff_data[BUFF_DATA_SIZE];
-    va_list args;
+        time_t t = time(NULL);
+        struct tm *lt = localtime(&t);
+        char buff_time[BUFF_TIME_SIZE];
+        char buff_data[BUFF_DATA_SIZE];
+        va_list args;
 
-    buff_time[strftime(buff_time,sizeof(buff_time),"%Y-%m-%d %H:%M:%S",lt)] = '\0';
-    sprintf(buff_data,"{\"timestamp\":\"%s\",\"level\":\"%s\",\"file\":\"%s\",\"line\":%d,\"msg\":\"",buff_time,levels[level],file,line);
-    va_start(args, fmt);
-    vsprintf(buff_data+strlen(buff_data),fmt,args);
-    va_end(args);
-    sprintf(buff_data+strlen(buff_data),"\"%s\n","}");
+        buff_time[strftime(buff_time,sizeof(buff_time),"%Y-%m-%d %H:%M:%S",lt)] = '\0';
+        sprintf(buff_data,"{\"timestamp\":\"%s\",\"level\":\"%s\",\"file\":\"%s\",\"line\":%d,\"msg\":\"",buff_time,levels[level],file,line);
+        va_start(args, fmt);
+        vsprintf(buff_data+strlen(buff_data),fmt,args);
+        va_end(args);
+        sprintf(buff_data+strlen(buff_data),"\"%s\n","}");
 
-    if(level >= slog.l_level){
-         fprintf(stderr,"%s",buff_data);
-    }
+        if(level >= slog.l_level){
+             fprintf(stderr,"%s",buff_data);
+        }
 
-    if(slog.fp){
-        fprintf(slog.fp,"%s",buff_data);
-        fflush(slog.fp);
-    }
+        if(slog.fp){
+            fprintf(slog.fp,"%s",buff_data);
+            fflush(slog.fp);
+        }
     }
 }
 

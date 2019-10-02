@@ -1326,7 +1326,10 @@ int fufs_open_impl(const char* function, ...){
                 }
                 goto end_file;
             }else{
-                if((oflag & O_DIRECTORY) || (xstat(path) && is_file_type(path,TYPE_DIR))){
+                //exist other layers
+                //
+                //if target is folder
+                if((oflag & O_DIRECTORY) || (xstat(destpath) && is_file_type(destpath,TYPE_DIR))){
                     goto end_folder;
                 }
 
@@ -1336,10 +1339,12 @@ int fufs_open_impl(const char* function, ...){
                 }
 
                 //copy and write
-                if(xstat(path) && is_file_type(path, TYPE_FILE)){
+                if(xstat(destpath) && is_file_type(destpath, TYPE_FILE)){
+                    char oldpath[MAX_PATH];
+                    strcpy(oldpath, destpath);
                     memset(destpath,'\0',MAX_PATH);
-                    if(!copyFile2RW(path, destpath)){
-                        log_fatal("copy from %s to %s encounters error", path, destpath);
+                    if(!copyFile2RW(oldpath, destpath)){
+                        log_fatal("copy from %s to %s encounters error", oldpath, destpath);
                         return -1;
                     }
                 }
@@ -1413,70 +1418,87 @@ FILE* fufs_fopen_impl(const char * function, ...){
     va_end(args);
 
     INITIAL_SYS(fopen)
-        INITIAL_SYS(fopen64)
-        INITIAL_SYS(freopen)
-        INITIAL_SYS(freopen64)
+    INITIAL_SYS(fopen64)
+    INITIAL_SYS(freopen)
+    INITIAL_SYS(freopen64)
 
-        if(!xstat(path) || pathExcluded(path)){
-            goto end;
-        }else{
-            char rel_path[MAX_PATH];
-            char layer_path[MAX_PATH];
-            int ret = get_relative_path_layer(path, rel_path, layer_path);
-            if(ret == 0){
-                const char * container_root = getenv("ContainerRoot");
-                if(strcmp(layer_path,container_root) == 0){
-                    goto end;
-                }else{
-                    //copy and write
-                    if(strncmp(mode,"r",1) == 0){
-                        goto end;
-                    }
+    char destpath[MAX_PATH];
+    strcpy(destpath, path);
 
-                    char destpath[MAX_PATH];
-                    if(!copyFile2RW(path, destpath)){
-                        log_fatal("copy from %s to %s encounters error", path, destpath);
-                        return NULL;
-                    }
-                    if(strcmp(function,"fopen") == 0){
-                        return RETURN_SYS(fopen,(destpath,mode))
-                    }
-                    if(strcmp(function,"fopen64") == 0){
-                        return RETURN_SYS(fopen64,(destpath,mode))
-                    }
-                    if(strcmp(function,"freopen") == 0){
-                        return RETURN_SYS(freopen,(destpath,mode,stream))
-                    }
-                    if(strcmp(function,"freopen64") == 0){
-                        return RETURN_SYS(freopen64,(destpath,mode,stream))
-                    }
-                    goto err;
-                }
-            }else{
-                log_fatal("%s file doesn't exist in container", path);
-                return NULL;
+    if(!lxstat(path) || pathExcluded(path)){
+        goto end;
+    }else{
+        //check if it is symlink
+        if(is_file_type(path, TYPE_LINK)){
+            char link_resolved[MAX_PATH];
+            if(!resolveSymlink(path, link_resolved)){
+                goto err;
             }
-
+            memset(destpath, '\0', MAX_PATH);
+            strcpy(destpath, link_resolved);
+            log_debug("fopen resolves link: %s, target: %s", path, destpath);
         }
+
+        char rel_path[MAX_PATH];
+        char layer_path[MAX_PATH];
+        int ret = get_relative_path_layer(destpath, rel_path, layer_path);
+        if(ret == 0){
+            const char * container_root = getenv("ContainerRoot");
+            if(strcmp(layer_path,container_root) == 0){
+                goto end;
+            }else{
+                //copy and write
+                if(strncmp(mode,"r",1) == 0){
+                    goto end;
+                }
+
+                char oldpath[MAX_PATH];
+                //backup
+                strcpy(oldpath, destpath);
+                memset(destpath,'\0',MAX_PATH);
+                if(!copyFile2RW(oldpath, destpath)){
+                    log_fatal("copy from %s to %s encounters error", oldpath, destpath);
+                    return NULL;
+                }
+                if(strcmp(function,"fopen") == 0){
+                    return RETURN_SYS(fopen,(destpath,mode))
+                }
+                if(strcmp(function,"fopen64") == 0){
+                    return RETURN_SYS(fopen64,(destpath,mode))
+                }
+                if(strcmp(function,"freopen") == 0){
+                    return RETURN_SYS(freopen,(destpath,mode,stream))
+                }
+                if(strcmp(function,"freopen64") == 0){
+                    return RETURN_SYS(freopen64,(destpath,mode,stream))
+                }
+                goto err;
+            }
+        }else{
+            log_fatal("%s file doesn't exist in container", destpath);
+            return NULL;
+        }
+
+    }
 
 end:
     log_debug("%s ends", function);
-    if(!xstat(path)){
+    if(!xstat(destpath)){
         INITIAL_SYS(mkdir)
-            recurMkdir(path);
+        recurMkdir(destpath);
     }
 
     if(strcmp(function,"fopen") == 0){
-        return RETURN_SYS(fopen,(path,mode))
+        return RETURN_SYS(fopen,(destpath,mode))
     }
     if(strcmp(function,"fopen64") == 0){
-        return RETURN_SYS(fopen64,(path,mode))
+        return RETURN_SYS(fopen64,(destpath,mode))
     }
     if(strcmp(function,"freopen") == 0){
-        return RETURN_SYS(freopen,(path,mode,stream))
+        return RETURN_SYS(freopen,(destpath,mode,stream))
     }
     if(strcmp(function,"freopen64") == 0){
-        return RETURN_SYS(freopen64,(path,mode,stream))
+        return RETURN_SYS(freopen64,(destpath,mode,stream))
     }
 
 err:
@@ -1963,9 +1985,9 @@ int fufs_symlink_impl(const char *function, ...){
     }
 
     INITIAL_SYS(symlinkat)
-        INITIAL_SYS(symlink)
+    INITIAL_SYS(symlink)
 
-        char dir[MAX_PATH];
+    char dir[MAX_PATH];
     strcpy(dir, resolved);
     dirname(dir);
     //parent folder does not exist
@@ -2004,10 +2026,10 @@ int fufs_creat_impl(const char *function,...){
     }
 
     INITIAL_SYS(creat64)
-        INITIAL_SYS(creat)
+    INITIAL_SYS(creat)
 
-        //create parent folder
-        char dir[MAX_PATH];
+    //create parent folder
+    char dir[MAX_PATH];
     strcpy(dir, resolved);
     dirname(dir);
     if(!xstat(dir)){

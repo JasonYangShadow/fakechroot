@@ -268,13 +268,13 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
                         char tmp[FAKECHROOT_PATH_MAX];
                         sprintf(tmp, "%s/%s", paths[i], rel_path);
                         if(!lxstat(tmp)){
-                            debug("rel2absLayer failed resolved: %s",tmp);
+                            //debug("rel2absLayer failed resolved: %s",tmp);
                             if(getParentWh(tmp)){
                                 break;
                             }
                             continue;
                         }else{
-                            debug("rel2absLayer successfully resolved: %s",tmp);
+                            //debug("rel2absLayer successfully resolved: %s",tmp);
                             snprintf(resolved,FAKECHROOT_PATH_MAX,"%s",tmp);
                             b_resolved = true;
                             break;
