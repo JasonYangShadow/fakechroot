@@ -1088,10 +1088,19 @@ bool resolveSymlink(const char *link, char *target){
                        sprintf(abs_path, "/%s", resolved);
                    }else if(strncmp(resolved,"..",2) == 0 && strstr(resolved, "/") != NULL){
                        //handle 4
-                       if(*rel_path == '.'){
-                           sprintf(abs_path, "/%s", resolved);
+                       //get parent folder
+                       char parent[MAX_PATH];
+                       char base[MAX_PATH];
+                       bool ret = split_path(rel_path, parent, base);
+                       log_debug("resolve symlink splits path: %s, parent: %s, base: %s", rel_path, parent, base);
+                       if(ret){
+                            if(*rel_path == '.'){
+                                sprintf(abs_path, "/%s", resolved + 2);
+                            }else{
+                                sprintf(abs_path, "/%s/%s", parent, resolved);
+                            }
                        }else{
-                           sprintf(abs_path, "/%s/%s", rel_path, resolved);
+                            sprintf(abs_path, "/%s", resolved + 2);
                        }
                    }else{
                        //handle 1
@@ -1112,6 +1121,8 @@ bool resolveSymlink(const char *link, char *target){
                    //reset and copy to resolved
                    memset(resolved, '\0', MAX_PATH);
                    strcpy(resolved, abs_path);
+                   //dedotdot resolved path
+                   dedotdot(resolved);
                 } // here we convert path to absolute path according to container base path. i.e, /p1/f1
 
 
@@ -1298,6 +1309,7 @@ int fufs_open_impl(const char* function, ...){
     strcpy(destpath, path);
     //not exists or excluded directly calling real open
     if(!lxstat(path) || pathExcluded(path)){
+        log_debug("open path: %s could not be found", path);
         if(oflag & O_DIRECTORY){
             goto end_folder;
         }

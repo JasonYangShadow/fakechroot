@@ -173,7 +173,14 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
             }
         }else{
             snprintf(resolved, FAKECHROOT_PATH_MAX,"%s/%s",cwd,name_dup);
+            char old_path[MAX_PATH];
+            strcpy(old_path, resolved);
+            memset(resolved,'\0',MAX_PATH);
+            if(!findFileInLayers(old_path, resolved)){
+                debug("rel2absLayer could not resolve escaped path: %s", old_path);
+            }
         }
+
         dedotdot(resolved);
         if(pathExcluded(resolved)){
             goto end;
