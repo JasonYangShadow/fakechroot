@@ -118,6 +118,7 @@ bool findFileInLayers(const char *file,char *resolved);
 bool findFileInLayersSkip(const char *file, char *resolved, size_t skip);
 bool copyFile2RW(const char *abs_path, char *resolved);
 bool resolveSymlink(const char *link, char *target);
+bool iterResolveSymlink(const char *link, char *target);
 int recurMkdir(const char *path);
 int recurMkdirMode(const char *path, mode_t mode);
 struct dirent_obj* listDir(const char *path, int *num);

@@ -27,8 +27,6 @@ void loginfo(enum LOG_LEVEL level, const char * file, int line, char *fmt, ...){
     if(log_level && strlen(log_level) == 1){
       int l = log_level[0]-'0';
       slog.l_level = (enum LOG_LEVEL) l;
-    }else{
-      slog.l_level = INFO;
     }
 
     if(slog.l_switch){

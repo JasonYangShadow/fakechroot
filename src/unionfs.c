@@ -939,7 +939,7 @@ bool lxstat(const char *abs_path){
         return false;
     }
     INITIAL_SYS(__lxstat)
-        struct stat st;
+    struct stat st;
     if(real___lxstat(1, abs_path, &st) == 0){
         return true;
     }
@@ -1049,6 +1049,163 @@ bool pathExcluded(const char *abs_path){
         }
     }
     return false;
+}
+
+//a fixed version of resolving symlink if the target is still symlink, we have to interately resolve it until it targets to the real file
+bool iterResolveSymlink(const char *link, char *target){
+    log_debug("iterately resolve symlink starts: %s", link);
+    //copy link firstly
+    char resolved[MAX_PATH];
+    strcpy(resolved, link);
+
+    //if resolved is still symlink, solve it until success
+    INITIAL_SYS(readlink)
+    while(lxstat(resolved) && is_file_type(resolved, TYPE_LINK)){
+        char rlink[MAX_PATH];
+        ssize_t size = real_readlink(resolved, rlink, MAX_PATH-1);
+        if(size == -1){
+            log_fatal("can't resolve link %s", resolved);
+            strcpy(target,resolved);
+            return false;
+        }else{
+            rlink[size] = '\0';
+            char rel_path[MAX_PATH];
+            char layer_path[MAX_PATH];
+            //we first get absolute path(resolved) rel and layer info 
+            int ret = get_relative_path_layer(resolved, rel_path, layer_path);
+            log_debug("iterately resolve symlink, ret: %d, original path: %s, rel_path: %s, layer_path: %s", ret, resolved, rel_path, layer_path);
+            if(ret == 0){
+                //original path is inside container
+                
+                //starts checking resolved symlink
+                if(*rlink != '/'){
+                    //here there are 4 different formats 
+                    // 1: file -> file2
+                    // 2: file -> /path1/file2
+                    // 3: file -> bin/file2
+                    // 4: file -> ../path1/file2
+                    //
+                    // 2 is not handled here
+                    // we only have to handle 1,3,4 here
+                   char abs_path[MAX_PATH];
+                   if(strstr(rlink,"/") != NULL && strncmp(rlink,"..",2) !=0 ){
+                       //handle 3
+                       sprintf(abs_path, "/%s", rlink);
+                   }else if(strncmp(rlink,"..",2) == 0 && strstr(rlink, "/") != NULL){
+                       //handle 4
+                       //get parent folder
+                       char parent[MAX_PATH];
+                       char base[MAX_PATH];
+                       bool ret = split_path(rel_path, parent, base);
+                       //get original path parent folder and base file
+                       log_debug("resolve symlink splits path: %s, parent: %s, base: %s", rel_path, parent, base);
+                       if(ret){
+                            if(*rel_path == '.'){
+                                sprintf(abs_path, "%s", rlink + 2);
+                            }else{
+                                sprintf(abs_path, "/%s/%s", parent, rlink);
+                            }
+                       }else{
+                            sprintf(abs_path, "%s", rlink + 2);
+                       }
+                   }else{
+                       //handle 1
+                       if(*rel_path == '.'){
+                           sprintf(abs_path, "/%s", resolved);
+                       }else{
+                           char parent[MAX_PATH];
+                           char base[MAX_PATH];
+                           bool ret = split_path(rel_path, parent, base);
+                           log_debug("resolve symlink splits path: %s, parent: %s, base: %s", rel_path, parent, base);
+                           if(ret){
+                               sprintf(abs_path, "/%s/%s", parent, rlink);
+                           }else{
+                               sprintf(abs_path, "/%s", rlink);
+                           }
+                       }
+                   }
+                   //reset and copy to resolved
+                   memset(resolved, '\0', MAX_PATH);
+                   strcpy(resolved, abs_path);
+                   //dedotdot resolved path
+                   dedotdot(resolved);
+                   // here we convert path to absolute path according to container base path. i.e, /p1/f1
+                }else{
+                    memset(resolved, '\0', MAX_PATH);
+                    strcpy(resolved, rlink);
+                    dedotdot(resolved);
+                }
+
+                log_debug("resolve symlink step 1: resolved: %s", resolved);
+                //then we start finding the correct absolute path based on container layers
+                if(pathExcluded(resolved)){
+                    strcpy(target,resolved);
+                    return true;
+                }else{
+                    char ** paths;
+                    size_t num;
+                    paths = getLayerPaths(&num);
+                    bool b_resolved = false;
+                    if(num > 0){
+                        char tmp[MAX_PATH];
+                        for(size_t i = 0; i< num; i++){
+                            memset(tmp,'\0',MAX_PATH);
+                            if(*resolved == '/'){
+                                sprintf(tmp, "%s%s", paths[i],resolved);
+                            }else{
+                                sprintf(tmp, "%s/%s", paths[i],resolved);
+                            }
+                            if(!lxstat(tmp)){
+                                log_debug("symlink failed resolved: %s",tmp);
+                                if(getParentWh(tmp)){
+                                    break;
+                                }
+                                continue;
+                            }else{
+                                log_debug("symlink successfully resolved: %s",tmp);
+                                b_resolved = true;
+
+                                //reset and copy
+                                memset(resolved,'\0', MAX_PATH);
+                                strcpy(resolved,tmp);
+                                break;
+                            }
+                        }
+                    }
+                    if(paths){
+                        for(int i = 0; i < num; i++){
+                            debug_free(paths[i]);
+                        }
+                        debug_free(paths);
+                    }
+                    if(!b_resolved){
+                        const char * container_root = getenv("ContainerRoot");
+                        char tmp[MAX_PATH];
+                        if(*resolved == '/'){
+                            snprintf(tmp, MAX_PATH,"%s%s",container_root,resolved);
+                        }else{
+                            snprintf(tmp, MAX_PATH,"%s/%s",container_root,resolved);
+                        }
+
+                        memset(resolved,'\0',MAX_PATH);
+                        strcpy(resolved,tmp);
+                    }
+                }// find real absolute path
+
+            }else{
+                //original path is not inside container, meaning that it is either excluded path or escapted path
+                if(!pathExcluded(resolved)){
+                    log_fatal("iterately resolve symlink path: %s escaped from container", resolved);
+                    strcpy(target, resolved);
+                    return false;
+                }
+            }
+
+        } // size == -1 else ends
+    }//while ends
+
+    strcpy(target, resolved);
+    return true;
 }
 
 //this function is used for resolving symlink on different situations
