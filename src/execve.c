@@ -64,6 +64,18 @@ wrapper(execve, int, (const char * filename, char * const argv [], char * const 
     if (elfloader_opt_argv0 && !*elfloader_opt_argv0) elfloader_opt_argv0 = NULL;
 
     debug("execve start(\"%s\", {\"%s\", ...}, {\"%s\", ...})", filename, argv[0], envp ? envp[0] : "(null)");
+    int idx = 0;
+    while(argv[idx]){
+        debug("execve start.. arg: %s", argv[idx]);
+        idx++;
+    }
+    /**
+    idx = 0;
+    while(envp[idx]){
+        debug("execve start... envp: %s", envp[idx]);
+        idx++;
+    }
+    **/
 
     strncpy(argv0, filename, FAKECHROOT_PATH_MAX);
 
@@ -178,12 +190,9 @@ skip2: ;
     expand_chroot_path(filename);
     if(lxstat(filename) && is_file_type(filename, TYPE_LINK)){
         debug("nextcall(execve) symlink found: %s", filename);
-        while(lxstat(filename) && is_file_type(filename, TYPE_LINK)){
-            char link_resolved[FAKECHROOT_PATH_MAX];
-            resolveSymlink(filename, link_resolved);
-            filename = link_resolved;
-            expand_chroot_path(filename);
-        }
+        char link_resolved[FAKECHROOT_PATH_MAX];
+        iterResolveSymlink(filename, link_resolved);
+        filename = link_resolved;
     }else{
         strcpy(tmp, filename);
         filename = tmp;

@@ -16,9 +16,9 @@
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     *darr = NULL;
@@ -1426,6 +1426,37 @@ bool split_path(const char *path, char *parent, char *base){
     return true;
 }
 
+bool createParentFolder(const char *path){
+    if(path == NULL || *path == '\0'){
+        return false;
+    }
+    //if relative path
+    char resolved[MAX_PATH];
+    if(*path != '/'){
+        char cwd[MAX_PATH];
+        getcwd(cwd, MAX_PATH);
+        sprintf(resolved, "%s/%s", cwd, path);
+        dedotdot(resolved);
+    }else{
+        strcpy(resolved, path);
+    }
+
+    char *ret = strrchr(resolved, '/');
+    if(ret == NULL){
+        return false;
+    }
+    char parent[MAX_PATH];
+    memset(parent, '\0', MAX_PATH);
+    strncpy(parent, resolved, (strlen(resolved) - strlen(ret)));
+    if(!xstat(parent)){
+        int rc = recurMkdir(resolved);
+        if(rc != 0){
+            return false;
+        }
+    }
+    return true;
+}
+
 bool str_in_array(const char *str, const char **array, int num){
     if(str == NULL || array == NULL || num <= 0){
         return false;
@@ -1466,7 +1497,7 @@ int fufs_open_impl(const char* function, ...){
     strcpy(destpath, path);
     //not exists or excluded directly calling real open
     if(!lxstat(path) || pathExcluded(path)){
-        log_debug("open path: %s could not be found", path);
+        log_debug("open path: %s could not be found or excluded path", path);
         if(oflag & O_DIRECTORY){
             goto end_folder;
         }
@@ -1475,9 +1506,7 @@ int fufs_open_impl(const char* function, ...){
         //check if it is symlink
         if(is_file_type(path, TYPE_LINK)){
             char link_resolved[MAX_PATH];
-            if(!resolveSymlink(path, link_resolved)){
-                goto err;
-            }
+            iterResolveSymlink(path, link_resolved);
             memset(destpath, '\0', MAX_PATH);
             strcpy(destpath, link_resolved);
             log_debug("open resolves link: %s, target: %s", path, destpath);
@@ -1528,7 +1557,7 @@ int fufs_open_impl(const char* function, ...){
 end_folder:
     if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
-            int ret = recurMkdirMode(destpath,FOLDER_PERM);
+        int ret = recurMkdirMode(destpath,FOLDER_PERM);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", destpath, strerror(errno));
             return -1;
@@ -1540,7 +1569,7 @@ end_folder:
 end_file:
     if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
         INITIAL_SYS(mkdir)
-            char dname[MAX_PATH];
+        char dname[MAX_PATH];
         strcpy(dname,destpath);
         dirname(dname);
         int ret = recurMkdirMode(dname,FOLDER_PERM);
@@ -1552,7 +1581,7 @@ end_file:
     goto end;
 
 end:
-    log_debug("%s %s ends", function, destpath);
+    log_debug("%s %s ends with write flag? %d", function, destpath, ((oflag & O_WRONLY) || (oflag & O_RDWR)));
     if(strcmp(function,"openat") == 0){
         return RETURN_SYS(openat,(dirfd,destpath,oflag,mode))
     }

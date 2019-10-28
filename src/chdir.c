@@ -60,7 +60,7 @@ wrapper(chdir, int, (const char * path))
         return nextcall(chdir)(resolved);
     }
 
-    if(xstat(path) && is_file_type(resolved,TYPE_LINK)){
+    if(lxstat(path) && is_file_type(resolved,TYPE_LINK)){
         char link[FAKECHROOT_PATH_MAX];
         if(resolveSymlink(resolved,link)){
             debug("chdir %s",link);

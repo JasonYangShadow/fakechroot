@@ -28,6 +28,7 @@
 
 #include "libfakechroot.h"
 #include "strlcpy.h"
+#include "unionfs.h"
 
 
 wrapper(mkdtemp, char *, (char * template))
@@ -40,9 +41,13 @@ wrapper(mkdtemp, char *, (char * template))
 
     strlcpy(tmp, template, FAKECHROOT_PATH_MAX);
 
-    //if (!fakechroot_localdir(tmp)) {
     expand_chroot_path(tmpptr);
-    //}
+
+    bool ret = createParentFolder(tmpptr);
+    if(!ret){
+        debug("mkdtemp encounters error while creating parent folder of %s", tmpptr);
+        goto error;
+    }
 
     for (xxxdst = template; *xxxdst; xxxdst++);
     for (xxxdst--; *xxxdst == 'X'; xxxdst--, xxxlen++);
@@ -60,6 +65,7 @@ wrapper(mkdtemp, char *, (char * template))
     return template;
 
 error:
+    debug("mkdtemp failed with error: %s", strerror(errno));
     *template = '\0';
     return template;
 }

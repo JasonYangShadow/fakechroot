@@ -127,6 +127,7 @@ bool is_inside_container(const char *abs_path);
 bool parse_cmd_line(const char *cmdline, char *execute);
 bool split_path(const char *path, char *parent, char *base);
 bool str_in_array(const char *str, const char **array, int num);
+bool createParentFolder(const char *path);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

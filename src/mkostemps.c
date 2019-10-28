@@ -28,6 +28,7 @@
 
 #include "libfakechroot.h"
 #include "strlcpy.h"
+#include "unionfs.h"
 
 
 wrapper(mkostemps, int, (char * template, int suffixlen, int flags))
@@ -46,8 +47,11 @@ wrapper(mkostemps, int, (char * template, int suffixlen, int flags))
 
     strlcpy(tmp, template, FAKECHROOT_PATH_MAX);
 
-    if (!fakechroot_localdir(tmp)) {
-        expand_chroot_path(tmpptr);
+    expand_chroot_path(tmpptr);
+    bool ret = createParentFolder(tmpptr);
+    if(!ret){
+        debug("mkostemps encounters error while creating parent folder of %s", tmpptr);
+        goto error;
     }
 
     for (xxxdst = template; *xxxdst; xxxdst++);
