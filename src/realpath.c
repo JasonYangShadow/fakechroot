@@ -178,8 +178,13 @@ wrapper(realpath, char *, (const char * name, char * resolved))
             dest += end - start;
             *dest = '\0';
 
-            if (LSTAT_REL (rpath, &st) < 0)
+            debug("realpath rpath: %s", rpath);
+
+            //here it will split the path into differnt subsets to check if it exists
+            if (LSTAT_REL (rpath, &st) < 0){
+                debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                 goto error;
+            }
 
             if (S_ISLNK (st.st_mode)) {
                 char *buf;
@@ -187,12 +192,14 @@ wrapper(realpath, char *, (const char * name, char * resolved))
 
                 if (++num_links > MAXSYMLINKS) {
                     __set_errno(ELOOP);
+                    debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                     goto error;
                 }
 
                 buf = alloca(path_max);
                 if (!buf) {
                     __set_errno(ENOMEM);
+                    debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                     goto error;
                 }
 
@@ -200,6 +207,7 @@ wrapper(realpath, char *, (const char * name, char * resolved))
                 if (n < 0) {
                     int saved_errno = errno;
                     __set_errno(saved_errno);
+                    debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                     goto error;
                 }
                 buf[n] = '\0';
@@ -208,6 +216,7 @@ wrapper(realpath, char *, (const char * name, char * resolved))
                     extra_buf = alloca(path_max);
                     if (!extra_buf) {
                         __set_errno(ENOMEM);
+                        debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                         goto error;
                     }
                 }
@@ -215,6 +224,7 @@ wrapper(realpath, char *, (const char * name, char * resolved))
                 len = strlen(end);
                 if ((long int) (n + len) >= path_max) {
                     __set_errno(ENAMETOOLONG);
+                    debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                     goto error;
                 }
 
@@ -237,6 +247,7 @@ wrapper(realpath, char *, (const char * name, char * resolved))
                 }
             } else if (!S_ISDIR (st.st_mode) && *end != '\0') {
                 __set_errno(ENOTDIR);
+                debug("realpath encounters error on line: %d when processes path: %s", __LINE__, rpath);
                 goto error;
             }
         }
@@ -247,9 +258,11 @@ wrapper(realpath, char *, (const char * name, char * resolved))
         dest++;
     *dest = '\0';
 
+    debug("realpath solved path: %s, resolved: %s", name, rpath);
     return rpath;
 
 error: {
+        debug("realpath encounters error: %s with path: %s and resolved path: %s", strerror(errno), name, rpath);
         int saved_errno = errno;
         if (resolved == NULL)
             free(rpath);

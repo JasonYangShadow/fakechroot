@@ -1629,7 +1629,7 @@ FILE* fufs_fopen_impl(const char * function, ...){
         //check if it is symlink
         if(is_file_type(path, TYPE_LINK)){
             char link_resolved[MAX_PATH];
-            if(!resolveSymlink(path, link_resolved)){
+            if(!iterResolveSymlink(path, link_resolved)){
                 goto err;
             }
             memset(destpath, '\0', MAX_PATH);

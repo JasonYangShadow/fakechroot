@@ -103,10 +103,10 @@ void fakechroot_init(void)
         _Exit(atoi(detect));
     }
 
-    debug("fakechroot_init()");
-    debug("FAKECHROOT_BASE=\"%s\"", getenv("FAKECHROOT_BASE"));
-    debug("FAKECHROOT_BASE_ORIG=\"%s\"", getenv("FAKECHROOT_BASE_ORIG"));
-    debug("FAKECHROOT_CMD_ORIG=\"%s\"", getenv("FAKECHROOT_CMD_ORIG"));
+    //debug("fakechroot_init()");
+    //debug("FAKECHROOT_BASE=\"%s\"", getenv("FAKECHROOT_BASE"));
+    //debug("FAKECHROOT_BASE_ORIG=\"%s\"", getenv("FAKECHROOT_BASE_ORIG"));
+    //debug("FAKECHROOT_CMD_ORIG=\"%s\"", getenv("FAKECHROOT_CMD_ORIG"));
 
     if (!first) {
         char* exclude_path = getenv("FAKECHROOT_EXCLUDE_PATH");
