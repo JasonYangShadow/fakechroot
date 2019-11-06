@@ -31,69 +31,66 @@
 #include "libfakechroot.h"
 #include "readlink.h"
 #include "unionfs.h"
-#include "getcwd_real.h"
-#include "dedotdot.h"
-
-LOCAL int __lxstat64_rel(int, const char *, struct stat64 *);
 
 wrapper(__lxstat64, int, (int ver, const char * filename, struct stat64 * buf))
 {
-    debug("__lxstat64 %d, %s", ver, filename);
-    return __lxstat64_rel(ver, filename, buf);
+    char tmp[FAKECHROOT_PATH_MAX];
+    int retval;
+    READLINK_TYPE_RETURN linksize;
+    
+    debug("__lxstat64(%d, \"%s\", &buf)", ver,filename);
+    expand_chroot_path(filename);
+    retval = nextcall(__lxstat64)(ver, filename, buf);
+    //original bug fix but have to be changed in our case
+    //if target is symlink have to modify the link size
+    if((retval == 0) && (buf->st_mode & S_IFMT) == S_IFLNK){
+        INITIAL_SYS(readlink)
+        if((linksize = real_readlink(filename, tmp, sizeof(tmp) - 1)) != -1){
+            buf->st_size = linksize;
+        }
+    }
+    return retval;
+}
+
+
+/* Prevent looping with realpath() */
+LOCAL int __lxstat64_rel(int ver, const char * filename, struct stat64 * buf)
+{
+    char tmp[FAKECHROOT_PATH_MAX];
+    int retval;
+    READLINK_TYPE_RETURN linksize;
+    debug("__lxstat64_rel(%d, \"%s\", &buf)", ver, filename);
+    retval = nextcall(__lxstat64)(ver, filename, buf);
+    /* deal with http://bugs.debian.org/561991 */
+    if ((retval == 0) && (buf->st_mode & S_IFMT) == S_IFLNK){
+        INITIAL_SYS(readlink)
+        if ((linksize = real_readlink(filename, tmp, sizeof(tmp)-1)) != -1)
+            buf->st_size = linksize;
+    }
+    return retval;
 }
 
 //wrapper(__lxstat64, int, (int ver, const char * filename, struct stat64 * buf))
 //{
-//    debug("__lxstat64(%d, \"%s\", &buf)", ver, filename);
-//
-//    if (filename && !fakechroot_localdir(filename)) {
-//        char abs_filename[FAKECHROOT_PATH_MAX];
-//        rel2absLayer(filename, abs_filename);
-//        filename = abs_filename;
-//    }
-//
+//    debug("__lxstat64 %d, %s", ver, filename);
 //    return __lxstat64_rel(ver, filename, buf);
 //}
-
-
-LOCAL int __lxstat64_rel(int ver, const char * filename, struct stat64 * buf)
-{
-    char resolved[FAKECHROOT_PATH_MAX];
-    debug("__lxstat64_rel %d, %s", ver, filename);
-    if(*filename != '/'){
-        char cwd[FAKECHROOT_PATH_MAX];
-        getcwd_real(cwd, FAKECHROOT_PATH_MAX);
-        sprintf(resolved, "%s/%s", cwd, filename);
-    }else{
-        strcpy(resolved, filename);
-    }
-    dedotdot(resolved);
-    debug("__lxstat64_rel path: %s, resolved: %s", filename, resolved);
-    return nextcall(__lxstat64)(ver, resolved, buf);
-}
-
-//comment old implementations
-///* Prevent looping with realpath() */
+//
 //LOCAL int __lxstat64_rel(int ver, const char * filename, struct stat64 * buf)
 //{
-//    char tmp[FAKECHROOT_PATH_MAX];
-//    int retval;
-//    READLINK_TYPE_RETURN linksize;
-//    const char *orig_filename;
-//
-//    debug("__lxstat64_rel(%d, \"%s\", &buf)", ver, filename);
-//    orig_filename = filename;
-//    expand_chroot_path(filename);
-//    //expand_chroot_rel_path(filename);
-//    retval = nextcall(__lxstat64)(ver, filename, buf);
-//    /* deal with http://bugs.debian.org/561991 */
-//    if ((retval == 0) && (buf->st_mode & S_IFMT) == S_IFLNK)
-//        if ((linksize = readlink(orig_filename, tmp, sizeof(tmp)-1)) != -1)
-//            buf->st_size = linksize;
-//
-//    return retval;
+//    char resolved[FAKECHROOT_PATH_MAX];
+//    debug("__lxstat64_rel %d, %s", ver, filename);
+//    if(*filename != '/'){
+//        char cwd[FAKECHROOT_PATH_MAX];
+//        getcwd_real(cwd, FAKECHROOT_PATH_MAX);
+//        sprintf(resolved, "%s/%s", cwd, filename);
+//    }else{
+//        strcpy(resolved, filename);
+//    }
+//    dedotdot(resolved);
+//    debug("__lxstat64_rel path: %s, resolved: %s", filename, resolved);
+//    return nextcall(__lxstat64)(ver, resolved, buf);
 //}
-
 
 #else
 typedef int empty_translation_unit;

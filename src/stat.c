@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <stdlib.h>
-
+#include "unionfs.h"
 #include "libfakechroot.h"
 
 
@@ -35,6 +35,12 @@ wrapper(stat, int, (const char * file_name, struct stat * buf))
 {
     debug("stat(\"%s\", &buf)", file_name);
     expand_chroot_path(file_name);
+    if(lxstat(file_name) && is_file_type(file_name, TYPE_LINK)){
+        debug("stat encounters symlink: %s, is working on resolving it", file_name);
+        char link[MAX_PATH];
+        iterResolveSymlink(file_name, link);
+        return nextcall(stat)(link, buf);
+    }
     return nextcall(stat)(file_name, buf);
 }
 

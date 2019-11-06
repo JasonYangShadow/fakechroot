@@ -31,10 +31,30 @@
 #include <fcntl.h>
 
 #include "libfakechroot.h"
-#include "readlink.h"
 #include "unionfs.h"
+#include "readlink.h"
 
+wrapper(__lxstat, int, (int ver, const char * filename, struct stat * buf))
+{
+    char tmp[FAKECHROOT_PATH_MAX];
+    int retval;
+    READLINK_TYPE_RETURN linksize;
+    
+    debug("__lxstat(%d, \"%s\", &buf)", ver,filename);
+    expand_chroot_path(filename);
+    retval = nextcall(__lxstat)(ver, filename, buf);
+    //original bug fix but have to be changed in our case
+    //if target is symlink have to modify the link size
+    if((retval == 0) && (buf->st_mode & S_IFMT) == S_IFLNK){
+        INITIAL_SYS(readlink)
+        if((linksize = real_readlink(filename, tmp, sizeof(tmp) - 1)) != -1){
+            buf->st_size = linksize;
+        }
+    }
+    return retval;
+}
 
+/**
 wrapper(__lxstat, int, (int ver, const char * filename, struct stat * buf))
 {
     char tmp[FAKECHROOT_PATH_MAX];
@@ -46,14 +66,14 @@ wrapper(__lxstat, int, (int ver, const char * filename, struct stat * buf))
     orig_filename = filename;
     expand_chroot_path(filename);
     retval = nextcall(__lxstat)(ver, filename, buf);
-    /* deal with http://bugs.debian.org/561991 */
+    //deal with http://bugs.debian.org/561991
     if ((retval == 0) && (buf->st_mode & S_IFMT) == S_IFLNK)
         if ((linksize = readlink(orig_filename, tmp, sizeof(tmp)-1)) != -1)
             buf->st_size = linksize;
 
     return retval;
 }
-
+**/
 #else
 typedef int empty_translation_unit;
 #endif
