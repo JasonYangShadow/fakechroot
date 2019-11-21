@@ -23,15 +23,16 @@
 
 #include <string.h>
 #include "libfakechroot.h"
+#include <dlfcn.h>
 
 
 wrapper(dlopen, void *, (const char * filename, int flag))
 {
     debug("dlopen(\"%s\", %d)", filename, flag);
     if (filename && *filename == '/') {
-        debug("dlopen expand filename: %s", filename);
         expand_chroot_path(filename);
-        debug("dlopen expand filename result: %s", filename);
     }
-    return nextcall(dlopen)(filename, flag);
+    void *handle = nextcall(dlopen)(filename, flag);
+    debug("------------- handle: %p error: %s filename: %s", handle, dlerror(), filename);
+    return handle;
 }

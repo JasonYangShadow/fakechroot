@@ -1470,6 +1470,40 @@ bool str_in_array(const char *str, const char **array, int num){
     return false;
 }
 
+/**
+ *this funciton is used for spliting target into array based on sep
+ **/
+char** splitStrs(const char* target, size_t* num, const char* sep){
+    log_debug("splitstrs starts, target: %s, sep: %s", target, sep);
+    char** ret = NULL;
+    char* token = NULL;
+    *num = 0;
+    char target_cp[LD_MAX_SIZE];
+    strcpy(target_cp, target);
+    char* target_p = target_cp;
+    //first we loop to find the number
+    while((token = strtok_r(target_p, sep, &target_p))){
+        *num = *num + 1;
+    }
+
+    //target is empty
+    if(*num <= 0){
+        return ret;
+    }
+    //recopy target_cp for next loop
+    memset(target_cp, '\0', LD_MAX_SIZE);
+    strcpy(target_cp, target);
+    target_p = target_cp;
+    token = NULL;
+    ret = (char **)malloc(sizeof(char *)*(*num));
+    size_t idx = 0;
+    while((token = strtok_r(target_p, sep, &target_p))){
+        ret[idx] = (char *)malloc(MAX_PATH);
+        strcpy(ret[idx], token);
+        idx++;
+    }
+    return ret;
+}
 /**----------------------------------------------------------------------------------**/
 int fufs_open_impl(const char* function, ...){
     int dirfd = -1;
@@ -2446,7 +2480,7 @@ int fufs_rename_impl(const char* function, ...){
     va_end(args);
     INITIAL_SYS(creat)
 
-        const char * container_root = getenv("ContainerRoot");
+    const char * container_root = getenv("ContainerRoot");
     char old_rel_path[MAX_PATH];
     char old_layer_path[MAX_PATH];
     int old_ret = get_relative_path_layer(oldpath, old_rel_path, old_layer_path);
@@ -2494,8 +2528,8 @@ int fufs_rename_impl(const char* function, ...){
     }
 
     INITIAL_SYS(rename)
-        INITIAL_SYS(renameat)
-        log_debug("%s ends", function);
+    INITIAL_SYS(renameat)
+    log_debug("%s ends", function);
     if(strcmp(new_layer_path, container_root) == 0){
         if(strcmp(function,"renameat") == 0){
             return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,newpath))

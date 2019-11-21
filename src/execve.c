@@ -64,6 +64,9 @@ wrapper(execve, int, (const char * filename, char * const argv [], char * const 
     if (elfloader_opt_argv0 && !*elfloader_opt_argv0) elfloader_opt_argv0 = NULL;
 
     debug("execve start(\"%s\", {\"%s\", ...}, {\"%s\", ...})", filename, argv[0], envp ? envp[0] : "(null)");
+    //here we update ld_library_path firstly in order to add latest layers info into ld_library_path e.g rw layer. anothe way is that we directly add all combinations into ld_library_path by default without checking if dir exists
+    fakechroot_merge_ld_path();
+
     int idx = 0;
     while(argv[idx]){
         debug("execve start.. arg: %s", argv[idx]);
@@ -146,6 +149,7 @@ skip1: ;
             tmpkey[1023] = 0;
             if ((tp = strchr(tmpkey, '=')) != NULL) {
                 *tp = 0;
+                //tmpkey is the env var name
                 if (strcmp(tmpkey, "FAKECHROOT") == 0 ||
                         (is_base_orig && strcmp(tmpkey, "FAKECHROOT_BASE") == 0))
                 {
@@ -177,6 +181,13 @@ skip2: ;
     /* Exec substituted command */
     if (do_cmd_subst) {
         debug("nextcall(execve) exec substituted command(\"%s\", {\"%s\", ...}, {\"%s\", ...})", substfilename, argv[0], newenvp[0]);
+        char **sp;
+        for(sp = (char **)newenvp; *sp != NULL; ++sp){
+            if(strncmp(*sp, "LD_LIBRARY_PATH=", strlen("LD_LIBRARY_PATH=")) == 0){
+                memset(*sp, '\0', strlen(*sp));
+                strcpy(*sp, "LD_LIBRARY_PATH_SKIP=1");
+            }
+        }
         status = nextcall(execve)(substfilename, (char * const *)argv, newenvp);
         goto error;
     }
@@ -243,7 +254,7 @@ exe_excute:
             if(strncmp(tvar,"PWD",strlen("PWD")) == 0){
                 continue;
             }
-            if(strncmp(tvar,"LD_LIBRARY_LPMX",strlen("LD_LIBRARY_LPMX")) == 0){
+            if(strncmp(tvar,"LD_LIBRARY_PATH",strlen("LD_LIBRARY_PATH")) == 0){
                 continue;
             }
             if(strncmp(tvar,"SHELL",strlen("SHELL")) == 0){

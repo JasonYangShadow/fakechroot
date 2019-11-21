@@ -18,6 +18,7 @@
 #define MAX_LAYERS 128
 #define FOLDER_PERM 0775
 #define FILE_PERM 0644
+#define LD_MAX_SIZE 8*1024
 
 //macros for system calls
 #define DECLARE_SYS(FUNCTION,RETURN_TYPE,ARGS) \
@@ -128,6 +129,7 @@ bool parse_cmd_line(const char *cmdline, char *execute);
 bool split_path(const char *path, char *parent, char *base);
 bool str_in_array(const char *str, const char **array, int num);
 bool createParentFolder(const char *path);
+char** splitStrs(const char*, size_t*, const char*);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

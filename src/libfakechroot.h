@@ -214,6 +214,9 @@ int fakechroot_debug (const char *, ...);
 fakechroot_wrapperfn_t fakechroot_loadfunc (struct fakechroot_wrapper *);
 int fakechroot_localdir (const char *);
 int fakechroot_try_cmd_subst (char *, const char *, char *);
+//assemble ld path based on layers info
+int fakechroot_assemble_ld_path(char *);
+int fakechroot_merge_ld_path();
 
 /* We don't want to define _BSD_SOURCE and _DEFAULT_SOURCE and include stdio.h */
 #ifndef snprintf

@@ -135,7 +135,9 @@ static int __add_to_environ(const char *name, const char *value,
 LOCAL int __setenv(const char *name, const char *value, int replace)
 {
         /* NB: setenv("VAR", NULL, 1) inserts "VAR=" string */
-        return __add_to_environ(name, value ? value : "", replace);
+        int ret = __add_to_environ(name, value ? value : "", replace);
+        debug("__setenv success?:%d \"%s=%s\"", ret, name, value);
+        return ret;
 }
 
 LOCAL int __unsetenv(const char *name)
@@ -187,6 +189,7 @@ LOCAL int __clearenv(void)
 /* Put STRING, which is of the form "NAME=VALUE", in the environment.  */
 LOCAL int __putenv(char *string)
 {
+        debug("__putenv %s", string);
         if (strchr(string, '=') != NULL) {
                 return __add_to_environ(string, NULL, 1);
         }

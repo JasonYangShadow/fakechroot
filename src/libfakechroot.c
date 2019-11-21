@@ -42,6 +42,7 @@
 #include "strchrnul.h"
 #include <errno.h>
 #include <libgen.h>
+#include "unionfs.h"
 
 #define EXCLUDE_LIST_SIZE 100
 
@@ -67,7 +68,18 @@ char* preserve_env_list[] = {
     "LD_LIBRARY_PATH",
     "LD_PRELOAD"
 };
+char* ld_env_list[] = {
+    "/lib",
+    "/lib64",
+    "/lib/x86_64-linux-gnu", 
+    "/usr/lib/x86_64-linux-gnu", 
+    "/usr/lib", 
+    "/usr/local/lib", 
+    "/usr/lib64", 
+    "/usr/local/lib64"
+};
 const int preserve_env_list_count = sizeof preserve_env_list / sizeof preserve_env_list[0];
+const int ld_env_list_count = sizeof ld_env_list / sizeof ld_env_list[0];
 
 LOCAL int fakechroot_debug(const char* fmt, ...)
 {
@@ -103,7 +115,7 @@ void fakechroot_init(void)
         _Exit(atoi(detect));
     }
 
-    //debug("fakechroot_init()");
+    debug("fakechroot_init()");
     //debug("FAKECHROOT_BASE=\"%s\"", getenv("FAKECHROOT_BASE"));
     //debug("FAKECHROOT_BASE_ORIG=\"%s\"", getenv("FAKECHROOT_BASE_ORIG"));
     //debug("FAKECHROOT_CMD_ORIG=\"%s\"", getenv("FAKECHROOT_CMD_ORIG"));
@@ -134,6 +146,9 @@ void fakechroot_init(void)
         __setenv("FAKECHROOT", "true", 1);
         __setenv("FAKECHROOT_VERSION", FAKECHROOT, 1);
     }
+
+    //process ld_library_path
+    fakechroot_merge_ld_path();
 }
 
 /* Lazily load function */
@@ -221,4 +236,151 @@ LOCAL int fakechroot_try_cmd_subst(char* env, const char* filename, char* cmd_su
     } while (*env++ != '\0');
 
     return 0;
+}
+
+/**
+ * Find and assemble ld_library_path items. return zero is it is successful and return -1 if any errors occur
+ * ret size should be LD_MAX_SIZE
+ */
+LOCAL int fakechroot_assemble_ld_path(char* ret){
+    char *layers = getenv("ContainerLayers");
+    if(!layers || (layers && *layers == '\0')){
+        debug("could not get ContainerLayers env var, return");
+        return -1;
+    }
+    char *base_root = getenv("ContainerBasePath");
+    if(!base_root || (base_root && *base_root == '\0')){
+        debug("could not get ContainerBasePath env var, return");
+        return -1;
+    }
+    char *con_root = getenv("ContainerRoot");
+    if(!con_root || (con_root && *con_root == '\0')){
+        debug("could not get ContainerRoot env var, return");
+        return -1;
+    }
+    if(!ret){
+        debug("ret is null,return");
+        return -1;
+    }
+    //memset ret
+    memset(ret, '\0', LD_MAX_SIZE);
+
+    char rest[FAKECHROOT_PATH_MAX];
+    strcpy(rest, layers);
+    char *rest_p = rest;
+    char *token = NULL;
+    while((token = strtok_r(rest_p,":",&rest_p))){
+       //token represents current split 
+       //if rw layer
+       if(strcmp(token, "rw") == 0){
+            //start check each item in ld_env_list
+            for(int i = 0; i<ld_env_list_count; i++){
+                char tmp_path[FAKECHROOT_PATH_MAX];
+                //initialize
+                memset(tmp_path, '\0', FAKECHROOT_PATH_MAX);
+                sprintf(tmp_path, "%s%s", con_root, ld_env_list[i]);
+                if(xstat(tmp_path)){
+                    //add : to the end of path
+                    memcpy(tmp_path + strlen(tmp_path), ":", 1);
+                    memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
+                }
+            }
+       }else{
+       //other layers
+            for(int i = 0; i<ld_env_list_count; i++){
+                char tmp_path[FAKECHROOT_PATH_MAX];
+                memset(tmp_path, '\0', FAKECHROOT_PATH_MAX);
+                sprintf(tmp_path, "%s/%s%s", base_root, token, ld_env_list[i]);
+                if(xstat(tmp_path)){
+                    //add : to the end of the path
+                    memcpy(tmp_path + strlen(tmp_path), ":", 1);
+                    memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
+                }
+            }
+       }
+    }   
+    debug("fakechroot_assemble_ld_path assemble ld_path: %s", ret);
+    return 0;
+}
+
+/**
+ * merge ld_path based on current generated ld_path
+ * target size should be LD_MAX_SIZE
+ */
+
+//each time when current LD_LIBRARY_PATH does not include necessary generated necessary ld paths, we have to add them to it in order for correct searching
+LOCAL int fakechroot_merge_ld_path(){
+   char* ld_path = getenv("LD_LIBRARY_PATH");
+   char* ld_skip = getenv("LD_LIBRARY_PATH_SKIP");
+   //here LD_LIBRARY_PATH_SKIP will be set if we exec substitude command
+   if(!ld_path && ld_skip && strcmp(ld_skip,"1") == 0){
+       return 0;
+   }
+
+   //here we declare a ld_path that could contain all info
+   char ld_ret[LD_MAX_SIZE];
+   memset(ld_ret, '\0', LD_MAX_SIZE);
+   if(ld_path){
+      if(ld_path[strlen(ld_path) - 1] == '.'){
+          memcpy(ld_ret, ld_path, strlen(ld_path)-1);
+      }else{
+          strcpy(ld_ret, ld_path);
+      }
+   }
+
+   //generate necessary ld_paths
+   char gen_ld_path[LD_MAX_SIZE];
+   char* gen_ld_path_p = gen_ld_path;
+   int ret = fakechroot_assemble_ld_path(gen_ld_path_p);
+   if(ret != 0){
+       debug("fakechroot could not assemble ld path");
+       return -1;
+   }
+
+   //current ld_path
+   size_t num;
+   char** ld_splits = splitStrs(ld_path, &num, ":");
+   //the algorithm acts like this:
+   //split generated ld path and iterately check if substr exists in given target, if not, append it to the end of target
+   //here we assume that target contains '\0' as the ending terminator.
+   char* token = NULL;   
+   while((token = strtok_r(gen_ld_path_p,":",&gen_ld_path_p))){
+       bool isFound = false;
+       for(size_t i =0; i<num; i++){
+           if(strcmp(token, ld_splits[i]) == 0){
+               isFound = true;
+               break;
+           }
+       }
+       if(isFound){
+           continue;
+       }else{
+           char ld_item[FAKECHROOT_PATH_MAX];
+           //the last char is not ':'
+           if(strlen(ld_ret) > 0 && ld_ret[strlen(ld_ret)-1] != ':'){
+                ld_ret[strlen(ld_ret)] = ':';
+           }
+           sprintf(ld_item, "%s:", token);
+           memcpy(ld_ret+ strlen(ld_ret), ld_item, strlen(ld_item));
+       }
+   }
+
+   if(strlen(ld_ret) > LD_MAX_SIZE - 2){
+       debug("assembled ld_path is longer than LD_MAX_SIZE, will cause error, ld_path length: %d, LD_MAX_SIZE: %d", strlen(ld_path), LD_MAX_SIZE);
+       //truncate
+       ld_ret[LD_MAX_SIZE-1] = '\0';
+   }
+
+   for(int i = 0; i<num; i++){
+       free(ld_splits[i]);
+   }
+   if(ld_splits){
+       free(ld_splits);
+   }
+
+   if(strlen(ld_ret) > strlen(ld_path)){
+      memset(ld_ret+strlen(ld_ret),'.',1);
+      __setenv("LD_LIBRARY_PATH", ld_ret, 1);
+   }
+   return 0;
 }
