@@ -1,25 +1,25 @@
 /*
-    libfakechroot -- fake chroot environment
-    Copyright (c) 2003-2015 Piotr Roszatycki <dexter@debian.org>
-    Copyright (c) 2007 Mark Eichin <eichin@metacarta.com>
-    Copyright (c) 2006, 2007 Alexander Shishkin <virtuoso@slind.org>
+   libfakechroot -- fake chroot environment
+   Copyright (c) 2003-2015 Piotr Roszatycki <dexter@debian.org>
+   Copyright (c) 2007 Mark Eichin <eichin@metacarta.com>
+   Copyright (c) 2006, 2007 Alexander Shishkin <virtuoso@slind.org>
 
-    klik2 support -- give direct access to a list of directories
-    Copyright (c) 2006, 2007 Lionel Tricon <lionel.tricon@free.fr>
+   klik2 support -- give direct access to a list of directories
+   Copyright (c) 2006, 2007 Lionel Tricon <lionel.tricon@free.fr>
 
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either
-    version 2.1 of the License, or (at your option) any later version.
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser General Public License for more details.
+   This library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public
-    License along with this library; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
-*/
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+   */
 
 #include <config.h>
 
@@ -71,11 +71,11 @@ char* preserve_env_list[] = {
 char* ld_env_list[] = {
     "/lib",
     "/lib64",
-    "/lib/x86_64-linux-gnu", 
-    "/usr/lib/x86_64-linux-gnu", 
-    "/usr/lib", 
-    "/usr/local/lib", 
-    "/usr/lib64", 
+    "/lib/x86_64-linux-gnu",
+    "/usr/lib/x86_64-linux-gnu",
+    "/usr/lib",
+    "/usr/local/lib",
+    "/usr/lib64",
     "/usr/local/lib64"
 };
 const int preserve_env_list_count = sizeof preserve_env_list / sizeof preserve_env_list[0];
@@ -270,9 +270,9 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
     char *rest_p = rest;
     char *token = NULL;
     while((token = strtok_r(rest_p,":",&rest_p))){
-       //token represents current split 
-       //if rw layer
-       if(strcmp(token, "rw") == 0){
+        //token represents current split
+        //if rw layer
+        if(strcmp(token, "rw") == 0){
             //start check each item in ld_env_list
             for(int i = 0; i<ld_env_list_count; i++){
                 char tmp_path[FAKECHROOT_PATH_MAX];
@@ -285,8 +285,8 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
                     memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
                 }
             }
-       }else{
-       //other layers
+        }else{
+            //other layers
             for(int i = 0; i<ld_env_list_count; i++){
                 char tmp_path[FAKECHROOT_PATH_MAX];
                 memset(tmp_path, '\0', FAKECHROOT_PATH_MAX);
@@ -297,9 +297,9 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
                     memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
                 }
             }
-       }
-    }   
-    debug("fakechroot_assemble_ld_path assemble ld_path: %s", ret);
+        }
+    }
+    //debug("fakechroot_assemble_ld_path assemble ld_path: %s", ret);
     return 0;
 }
 
@@ -310,77 +310,119 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
 
 //each time when current LD_LIBRARY_PATH does not include necessary generated necessary ld paths, we have to add them to it in order for correct searching
 LOCAL int fakechroot_merge_ld_path(){
-   char* ld_path = getenv("LD_LIBRARY_PATH");
-   char* ld_skip = getenv("LD_LIBRARY_PATH_SKIP");
-   //here LD_LIBRARY_PATH_SKIP will be set if we exec substitude command
-   if(!ld_path && ld_skip && strcmp(ld_skip,"1") == 0){
-       return 0;
-   }
+    char* ld_path = getenv("LD_LIBRARY_PATH");
+    char* ld_skip = getenv("LD_LIBRARY_PATH_SKIP");
+    //here LD_LIBRARY_PATH_SKIP will be set if we exec substitude command
+    if(!ld_path && ld_skip && strcmp(ld_skip,"1") == 0){
+        return 0;
+    }
 
-   //here we declare a ld_path that could contain all info
-   char ld_ret[LD_MAX_SIZE];
-   memset(ld_ret, '\0', LD_MAX_SIZE);
-   if(ld_path){
-      if(ld_path[strlen(ld_path) - 1] == '.'){
-          memcpy(ld_ret, ld_path, strlen(ld_path)-1);
-      }else{
-          strcpy(ld_ret, ld_path);
-      }
-   }
+    //here we declare a ld_path that could contain all info
+    char ld_ret[LD_MAX_SIZE];
+    memset(ld_ret, '\0', LD_MAX_SIZE);
 
-   //generate necessary ld_paths
-   char gen_ld_path[LD_MAX_SIZE];
-   char* gen_ld_path_p = gen_ld_path;
-   int ret = fakechroot_assemble_ld_path(gen_ld_path_p);
-   if(ret != 0){
-       debug("fakechroot could not assemble ld path");
-       return -1;
-   }
+    //generate necessary ld_paths
+    char gen_ld_path[LD_MAX_SIZE];
+    char* gen_ld_path_p = gen_ld_path;
+    int ret = fakechroot_assemble_ld_path(gen_ld_path_p);
+    if(ret != 0){
+        debug("fakechroot could not assemble ld path");
+        return -1;
+    }
 
-   //current ld_path
-   size_t num;
-   char** ld_splits = splitStrs(ld_path, &num, ":");
-   //the algorithm acts like this:
-   //split generated ld path and iterately check if substr exists in given target, if not, append it to the end of target
-   //here we assume that target contains '\0' as the ending terminator.
-   char* token = NULL;   
-   while((token = strtok_r(gen_ld_path_p,":",&gen_ld_path_p))){
-       bool isFound = false;
-       for(size_t i =0; i<num; i++){
-           if(strcmp(token, ld_splits[i]) == 0){
-               isFound = true;
-               break;
-           }
-       }
-       if(isFound){
-           continue;
-       }else{
-           char ld_item[FAKECHROOT_PATH_MAX];
-           //the last char is not ':'
-           if(strlen(ld_ret) > 0 && ld_ret[strlen(ld_ret)-1] != ':'){
+    //current ld_path
+    size_t num;
+    char** ld_splits = splitStrs(ld_path, &num, ":");
+    //here we start expanding ld_path if necessary in order to make sure all items locate inside container
+    if(num > 0 && ld_splits){
+        expand_ld_path(ld_splits, num);
+        for(size_t idx = 0; idx<num; idx++){
+            char ld_item[FAKECHROOT_PATH_MAX];
+            sprintf(ld_item, "%s:", ld_splits[idx]);
+            //initialize ld_ret with expanded value
+            memcpy(ld_ret + strlen(ld_ret), ld_item, strlen(ld_item));
+        }
+    }
+    //the algorithm acts like this:
+    //split generated ld path and iterately check if substr exists in given target, if not, append it to the end of target
+    //here we assume that target contains '\0' as the ending terminator.
+    char* token = NULL;
+    while((token = strtok_r(gen_ld_path_p,":",&gen_ld_path_p))){
+        bool isFound = false;
+        for(size_t i =0; i<num; i++){
+            if(strcmp(token, ld_splits[i]) == 0){
+                isFound = true;
+                break;
+            }
+        }
+        if(isFound){
+            continue;
+        }else{
+            char ld_item[FAKECHROOT_PATH_MAX];
+            //the last char is not ':'
+            if(strlen(ld_ret) > 0 && ld_ret[strlen(ld_ret)-1] != ':'){
                 ld_ret[strlen(ld_ret)] = ':';
-           }
-           sprintf(ld_item, "%s:", token);
-           memcpy(ld_ret+ strlen(ld_ret), ld_item, strlen(ld_item));
-       }
-   }
+            }
+            //add other missing items
+            sprintf(ld_item, "%s:", token);
+            memcpy(ld_ret+ strlen(ld_ret), ld_item, strlen(ld_item));
+        }
+    }
 
-   if(strlen(ld_ret) > LD_MAX_SIZE - 2){
-       debug("assembled ld_path is longer than LD_MAX_SIZE, will cause error, ld_path length: %d, LD_MAX_SIZE: %d", strlen(ld_path), LD_MAX_SIZE);
-       //truncate
-       ld_ret[LD_MAX_SIZE-1] = '\0';
-   }
+    if(strlen(ld_ret) > LD_MAX_SIZE - 2){
+        debug("assembled ld_path is longer than LD_MAX_SIZE, will cause error, ld_path length: %d, LD_MAX_SIZE: %d", strlen(ld_path), LD_MAX_SIZE);
+        //truncate
+        ld_ret[LD_MAX_SIZE-1] = '\0';
+    }
 
-   for(int i = 0; i<num; i++){
-       free(ld_splits[i]);
-   }
-   if(ld_splits){
-       free(ld_splits);
-   }
+    for(int i = 0; i<num; i++){
+        if(ld_splits[i]){
+            free(ld_splits[i]);
+        }
+    }
+    if(ld_splits){
+        free(ld_splits);
+    }
 
-   if(strlen(ld_ret) > strlen(ld_path)){
-      memset(ld_ret+strlen(ld_ret),'.',1);
-      __setenv("LD_LIBRARY_PATH", ld_ret, 1);
-   }
-   return 0;
+    if(strlen(ld_ret) > strlen(ld_path)){
+        //remove last ':'
+        //memset(ld_ret+strlen(ld_ret)-1,'\0',1);
+        __setenv("LD_LIBRARY_PATH", ld_ret, 1);
+    }
+    return 0;
 }
+
+/**
+ * this function is used for expanding str if not inside container, but keeping original value if fails expanding.
+ * we will not copy the orignial value, but directly memcpy and extend it
+ */
+
+LOCAL int expand_ld_path(char **values, size_t num){
+    if(!values || num <= 0){
+        log_debug("expand_str fails because of null value");
+        return -1;
+    }
+
+    //we only expand if the value is absolute path
+    for(size_t idx = 0; idx<num; idx++){
+        if(values[idx] && *(values[idx]) == '/' && !is_inside_container(values[idx])){
+            char val_tmp[FAKECHROOT_PATH_MAX];
+            strcpy(val_tmp, values[idx]);
+            char *val_tmp_p = val_tmp;
+            expand_chroot_path(val_tmp_p);
+            if(!xstat(val_tmp_p) && !lxstat(val_tmp_p)){
+                //restore
+                log_debug("expand_str restore because target does not exists: val: %s", values[idx]);
+                continue;
+            }
+            if(strcmp(values[idx], val_tmp_p) == 0){
+                log_debug("expand_str returns because target is the same to original value: val: %s", values[idx]);
+                continue;
+            }
+            strcpy(values[idx], val_tmp_p);
+            log_debug("expand_str successfully expand ld_library_path: val: %s", values[idx]);
+        }
+    }
+    return 0;
+}
+

@@ -33,6 +33,14 @@ wrapper(dlmopen, void *, (Lmid_t nsid, const char * filename, int flag))
     if(filename && *filename == '/'){
         expand_chroot_path(filename);
     }
+    char *ld = getenv("LD_LIBRARY_PATH");
+    if(ld){
+        debug("dlmopen with LD_LIBRARY_PATH: %s", ld);
+    }else{
+        debug("dlmopen with NO LD_LIBRARY_PATH set!!");
+    }
+    //process ld_library_path before dlopen in order to patch ld_library_path
+    fakechroot_merge_ld_path();
     return nextcall(dlmopen)(nsid, filename, flag);
 }
 

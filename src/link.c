@@ -51,9 +51,10 @@
 
 wrapper(link, int, (const char *oldpath, const char *newpath))
 {
+    debug("link(\"%s\", \"%s\")", oldpath, newpath);
     char old_resolved[MAX_PATH];
     const char * container_root = getenv("ContainerRoot");
-    if(*oldpath == '/'){
+    if(*oldpath == '/' && !pathExcluded(oldpath)){
         expand_chroot_path(oldpath);
         char oldpath_dup[MAX_PATH];
         strcpy(oldpath_dup, oldpath);
@@ -81,14 +82,14 @@ wrapper(link, int, (const char *oldpath, const char *newpath))
                         INITIAL_SYS(creat)
                             int fd = real_creat(whpath,FILE_PERM);
                         if(fd < 0){
-                            debug("can't create .wh file, %s", whpath);
+                            debug("link can't create .wh file, %s", whpath);
                             return -1;
                         }
                         close(fd);
                     }
 
                 }else{
-                    debug("can't copy file %s", oldpath_dup);
+                    debug("link can't copy file %s", oldpath_dup);
                     errno = EACCES;
                     return -1;
                 }
@@ -107,13 +108,13 @@ wrapper(link, int, (const char *oldpath, const char *newpath))
                     INITIAL_SYS(creat)
                         int fd = real_creat(whpath,FILE_PERM);
                     if(fd < 0){
-                        debug("can't create .wh file, %s", whpath);
+                        debug("link can't create .wh file, %s", whpath);
                         return -1;
                     }
                     close(fd);
                 }
             }else{
-                debug("can't copy file %s", oldpath_dup);
+                debug("link can't copy file %s", oldpath_dup);
                 errno = EACCES;
                 return -1;
             }

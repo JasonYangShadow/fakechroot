@@ -993,7 +993,7 @@ int recurMkdirMode(const char *path, mode_t mode){
 
     if(!xstat(path)){
         INITIAL_SYS(mkdir)
-            log_debug("start creating dir %s", path);
+        log_debug("start creating dir %s", path);
         int ret = real_mkdir(path, mode);
         if(ret != 0){
             log_fatal("creating dirs %s encounters failure with error %s", path, strerror(errno));
@@ -1375,7 +1375,7 @@ bool is_inside_container(const char *abs_path){
         return false;
     }
     if(*abs_path != '/'){
-        log_error("input path should be absolute path rather than relative path");
+        log_debug("input path should be absolute path rather than relative path");
         return false;
     }
     char rel_path[MAX_PATH];
@@ -1474,7 +1474,6 @@ bool str_in_array(const char *str, const char **array, int num){
  *this funciton is used for spliting target into array based on sep
  **/
 char** splitStrs(const char* target, size_t* num, const char* sep){
-    log_debug("splitstrs starts, target: %s, sep: %s", target, sep);
     char** ret = NULL;
     char* token = NULL;
     *num = 0;
@@ -1504,6 +1503,7 @@ char** splitStrs(const char* target, size_t* num, const char* sep){
     }
     return ret;
 }
+
 /**----------------------------------------------------------------------------------**/
 int fufs_open_impl(const char* function, ...){
     int dirfd = -1;
@@ -1793,6 +1793,7 @@ int fufs_unlink_impl(const char* function,...){
                     char tmp[MAX_PATH];
                     for(size_t i = 0; i<num; i++){
                         sprintf(tmp,"%s/%s",abs_path,names[i]);
+                        log_debug("unlink target: %s", tmp);
                         unlink(tmp);
                     }
                 }
@@ -2120,8 +2121,7 @@ int fufs_mkdir_impl(const char* function,...){
     }
 
     dedotdot(resolved);
-
-    log_debug("mkdir %s ends", resolved);
+    log_debug("start mkdir %s", resolved);
     return recurMkdirMode(resolved, mode);
 
     /**
@@ -2153,34 +2153,40 @@ int fufs_link_impl(const char * function, ...){
     }
     va_end(args);
 
+    char resolved[MAX_PATH];
+    if(pathExcluded(newpath)){
+        strcpy(resolved, newpath);
+        goto end;
+    }
     //newpath should be changed to rw folder
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(newpath,rel_path,layer_path);
     if (ret == -1){
-        log_fatal("%s is not inside the container", rel_path);
+        log_fatal("%s is not inside the container", newpath);
         return -1;
     }
     const char * container_root = getenv("ContainerRoot");
-    char resolved[MAX_PATH];
     if(strcmp(layer_path,container_root) != 0){
         sprintf(resolved,"%s/%s",container_root,rel_path);
     }else{
         sprintf(resolved,"%s",newpath);
     }
 
+    /**
     if(lxstat(resolved)){
         INITIAL_SYS(unlink)
-            real_unlink(resolved);
+        real_unlink(resolved);
     }
+    **/
 
-    INITIAL_SYS(linkat)
-        INITIAL_SYS(link)
-
-        log_debug("%s ends", function);
+end:
+    log_debug("%s ends", function);
     if(strcmp(function,"linkat") == 0){
+        INITIAL_SYS(linkat)
         return RETURN_SYS(linkat,(olddirfd,oldpath,newdirfd,resolved,flags))
     }else{
+        INITIAL_SYS(link)
         return RETURN_SYS(link,(oldpath,resolved))
     }
 }

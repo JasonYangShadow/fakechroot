@@ -24,6 +24,7 @@
 #include <string.h>
 #include "libfakechroot.h"
 #include <dlfcn.h>
+#include "setenv.h"
 
 
 wrapper(dlopen, void *, (const char * filename, int flag))
@@ -32,7 +33,13 @@ wrapper(dlopen, void *, (const char * filename, int flag))
     if (filename && *filename == '/') {
         expand_chroot_path(filename);
     }
-    void *handle = nextcall(dlopen)(filename, flag);
-    debug("------------- handle: %p error: %s filename: %s", handle, dlerror(), filename);
-    return handle;
+    char *ld = getenv("LD_LIBRARY_PATH");
+    if(ld){
+        debug("dlopen with LD_LIBRARY_PATH: %s", ld);
+    }else{
+        debug("dlopen with NO LD_LIBRARY_PATH set!!");
+    }
+    //process ld_library_path before dlopen in order to patch ld_library_path
+    fakechroot_merge_ld_path();
+    return nextcall(dlopen)(filename, flag);
 }

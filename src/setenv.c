@@ -195,3 +195,14 @@ LOCAL int __putenv(char *string)
         }
         return __unsetenv(string);
 }
+
+wrapper(setenv, int, (const char *name, const char *value, int overwrite))
+{
+    debug("real_setenv(%s=%s withoverwrite: %d)", name, value, overwrite);
+    return __setenv(name, value, overwrite);
+}
+
+wrapper(putenv, int, (char *string)){
+    debug("real_putenv(%s)", string);
+    return __putenv(string);
+}

@@ -57,9 +57,10 @@ typedef int empty_translation_unit;
 
 wrapper(linkat, int, (int olddirfd, const char * oldpath, int newdirfd, const char * newpath, int flags))
 {
+    debug("linkat(%d, \"%s\", %d, \"%s\", %d)", olddirfd, oldpath, newdirfd, newpath, flags);
     char old_resolved[MAX_PATH];
     const char * container_root = getenv("ContainerRoot");
-    if(*oldpath == '/'){
+    if(*oldpath == '/' && !pathExcluded(oldpath)){
         expand_chroot_path_at(olddirfd, oldpath);
         char oldpath_dup[MAX_PATH];
         strcpy(oldpath_dup, oldpath);
@@ -87,14 +88,14 @@ wrapper(linkat, int, (int olddirfd, const char * oldpath, int newdirfd, const ch
                         INITIAL_SYS(creat)
                             int fd = real_creat(whpath,FILE_PERM);
                         if(fd < 0){
-                            debug("can't create .wh file, %s", whpath);
+                            debug("linkat can't create .wh file, %s", whpath);
                             return -1;
                         }
                         close(fd);
                     }
 
                 }else{
-                    debug("can't copy file %s", oldpath_dup);
+                    debug("linkat can't copy file %s", oldpath_dup);
                     errno = EACCES;
                     return -1;
                 }
@@ -113,13 +114,13 @@ wrapper(linkat, int, (int olddirfd, const char * oldpath, int newdirfd, const ch
                     INITIAL_SYS(creat)
                         int fd = real_creat(whpath,FILE_PERM);
                     if(fd < 0){
-                        debug("can't create .wh file, %s", whpath);
+                        debug("linkat can't create .wh file, %s", whpath);
                         return -1;
                     }
                     close(fd);
                 }
             }else{
-                debug("can't copy file %s", oldpath_dup);
+                debug("linkat can't copy file %s", oldpath_dup);
                 errno = EACCES;
                 return -1;
             }
