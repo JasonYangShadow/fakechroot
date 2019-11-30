@@ -314,6 +314,14 @@ LOCAL int fakechroot_merge_ld_path(){
     char* ld_skip = getenv("LD_LIBRARY_PATH_SKIP");
     //here LD_LIBRARY_PATH_SKIP will be set if we exec substitude command
     if(!ld_path && ld_skip && strcmp(ld_skip,"1") == 0){
+        //add at least LPMXROOT/.lpmxsys folder
+        char *mempid = getenv("MEMCACHED_PID");
+        if(mempid && *mempid == '/'){
+            //use memcached_pid path to find .lpmxsys folder, as it contains necessary libraries to start LPMX
+            char *parent = dirname(mempid);
+            __setenv("LD_LIBRARY_PATH", parent, 1);
+            debug("fakechroot ld_library_path is set to %s, as ld_library_path is cleared in subsitituded command", parent);
+        }
         return 0;
     }
 
@@ -386,7 +394,7 @@ LOCAL int fakechroot_merge_ld_path(){
 
     if(strlen(ld_ret) > strlen(ld_path)){
         //remove last ':'
-        //memset(ld_ret+strlen(ld_ret)-1,'\0',1);
+        memset(ld_ret+strlen(ld_ret)-1,'\0',1);
         __setenv("LD_LIBRARY_PATH", ld_ret, 1);
     }
     return 0;
