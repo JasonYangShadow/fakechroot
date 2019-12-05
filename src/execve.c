@@ -34,6 +34,7 @@
 #include "setenv.h"
 #include "readlink.h"
 #include "unionfs.h"
+#include <libgen.h>
 
 wrapper(execve, int, (const char * filename, char * const argv [], char * const envp []))
 {
@@ -184,8 +185,17 @@ skip2: ;
         char **sp;
         for(sp = (char **)newenvp; *sp != NULL; ++sp){
             if(strncmp(*sp, "LD_LIBRARY_PATH=", strlen("LD_LIBRARY_PATH=")) == 0){
+                debug("nextcall(execve) exec substituted command: %s, LD_LIBRARY_PATH value: %s", substfilename, *sp);
                 memset(*sp, '\0', strlen(*sp));
-                strcpy(*sp, "LD_LIBRARY_PATH_SKIP=1");
+                char *mempid = getenv("MEMCACHED_PID");
+                if(mempid && *mempid == '/'){
+                    //use memcached_pid path to find .lpmxsys folder, as it contains necessary libraries to start LPMX
+                    char *parent = dirname(mempid);
+                    char new_ld_path[FAKECHROOT_PATH_MAX];
+                    sprintf(new_ld_path, "LD_LIBRARY_PATH=%s", parent);
+                    debug("fakechroot ld_library_path is set to %s, as ld_library_path is cleared in subsitituded command", new_ld_path);
+                    memcpy(*sp, new_ld_path, strlen(new_ld_path));
+                }
             }
         }
         status = nextcall(execve)(substfilename, (char * const *)argv, newenvp);

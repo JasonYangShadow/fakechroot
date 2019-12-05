@@ -311,20 +311,6 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
 //each time when current LD_LIBRARY_PATH does not include necessary generated necessary ld paths, we have to add them to it in order for correct searching
 LOCAL int fakechroot_merge_ld_path(){
     char* ld_path = getenv("LD_LIBRARY_PATH");
-    char* ld_skip = getenv("LD_LIBRARY_PATH_SKIP");
-    //here LD_LIBRARY_PATH_SKIP will be set if we exec substitude command
-    if(!ld_path && ld_skip && strcmp(ld_skip,"1") == 0){
-        //add at least LPMXROOT/.lpmxsys folder
-        char *mempid = getenv("MEMCACHED_PID");
-        if(mempid && *mempid == '/'){
-            //use memcached_pid path to find .lpmxsys folder, as it contains necessary libraries to start LPMX
-            char *parent = dirname(mempid);
-            __setenv("LD_LIBRARY_PATH", parent, 1);
-            debug("fakechroot ld_library_path is set to %s, as ld_library_path is cleared in subsitituded command", parent);
-        }
-        return 0;
-    }
-
     //here we declare a ld_path that could contain all info
     char ld_ret[LD_MAX_SIZE];
     memset(ld_ret, '\0', LD_MAX_SIZE);
