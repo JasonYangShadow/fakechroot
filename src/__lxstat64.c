@@ -44,6 +44,7 @@ wrapper(__lxstat64, int, (int ver, const char * filename, struct stat64 * buf))
     strcpy(orig, filename);
 
     expand_chroot_path(filename);
+    //here if path inside container does not exist && path inside host does not exist neither, return container info
     retval = nextcall(__lxstat64)(ver, filename, buf);
     if(retval != 0){
         int old_retval = retval;
@@ -51,7 +52,8 @@ wrapper(__lxstat64, int, (int ver, const char * filename, struct stat64 * buf))
         if(retval == 0){
             filename = orig;
         }else{
-            retval = old_retval;
+            //redo to revert to container path
+            retval = nextcall(__lxstat64)(ver, filename, buf);
         }
     }
     //original bug fix but have to be changed in our case

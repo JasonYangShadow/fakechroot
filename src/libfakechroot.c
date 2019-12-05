@@ -258,6 +258,9 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
         debug("could not get ContainerRoot env var, return");
         return -1;
     }
+    //whether we append sys libs in the end of LD_LIBRARY_PATH
+    char *use_sys_lib = getenv("FAKECHROOT_USE_SYS_LIB");
+
     if(!ret){
         debug("ret is null,return");
         return -1;
@@ -299,6 +302,17 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
             }
         }
     }
+
+    if(use_sys_lib && *use_sys_lib != '\0'){
+        //we have to append all sys libs in the end of the LD_LIBRARY_PATH
+        for(int i = 0; i<ld_env_list_count; i++){
+            if(xstat(ld_env_list[i])){
+                char tmp_path[FAKECHROOT_PATH_MAX];
+                sprintf(tmp_path, "%s:", ld_env_list[i]);
+                memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
+            }
+        }
+    }
     //debug("fakechroot_assemble_ld_path assemble ld_path: %s", ret);
     return 0;
 }
@@ -311,6 +325,7 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
 //each time when current LD_LIBRARY_PATH does not include necessary generated necessary ld paths, we have to add them to it in order for correct searching
 LOCAL int fakechroot_merge_ld_path(){
     char* ld_path = getenv("LD_LIBRARY_PATH");
+    char* use_sys_lib = getenv("FAKECHROOT_USE_SYS_LIB");
     //here we declare a ld_path that could contain all info
     char ld_ret[LD_MAX_SIZE];
     memset(ld_ret, '\0', LD_MAX_SIZE);
@@ -329,7 +344,10 @@ LOCAL int fakechroot_merge_ld_path(){
     char** ld_splits = splitStrs(ld_path, &num, ":");
     //here we start expanding ld_path if necessary in order to make sure all items locate inside container
     if(num > 0 && ld_splits){
-        expand_ld_path(ld_splits, num);
+        //if NOT appending sys lib in the end of LD_LIBRARY_PATH
+        if(!use_sys_lib){
+            expand_ld_path(ld_splits, num);
+        }
         for(size_t idx = 0; idx<num; idx++){
             char ld_item[FAKECHROOT_PATH_MAX];
             sprintf(ld_item, "%s:", ld_splits[idx]);
