@@ -97,6 +97,7 @@ void deleteItemInChain(struct dirent_obj** darr, size_t num);
 void deleteItemInChainByPointer(struct dirent_obj** darr, struct dirent_obj** curr);
 void addItemToHead(struct dirent_obj** darr, struct dirent* item);
 void addItemToHeadV64(struct dirent_obj** darr, struct dirent64* item);
+void insertItemToHead(struct dirent_obj**, struct dirent_obj*);
 struct dirent * popItemFromHead(struct dirent_obj ** darr);
 struct dirent64 * popItemFromHeadV64(struct dirent_obj ** darr);
 void clearItems(struct dirent_obj** darr);

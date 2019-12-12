@@ -276,6 +276,14 @@ void deleteItemInChainByPointer(struct dirent_obj** darr, struct dirent_obj** cu
     }
 }
 
+void insertItemToHead(struct dirent_obj** darr, struct dirent_obj* item){
+    if(*darr == NULL || item == NULL){
+        return;
+    }
+    item->next = *darr;
+    *darr = item;
+}
+
 void addItemToHead(struct dirent_obj** darr, struct dirent* item)
 {
     if (*darr == NULL || item == NULL) {
@@ -2057,6 +2065,27 @@ struct dirent_obj* listDir(const char *path, int *num){
     if(wh_map){
         destroy_hmap(wh_map);
     }
+
+    //start adding . and ..
+    struct dirent_obj* tmp = (struct dirent_obj *)debug_malloc(sizeof(struct dirent_obj));
+    tmp->dp = (struct dirent* )debug_malloc(sizeof(struct dirent));
+    strcpy(tmp->dp->d_name, "..");
+    //dirent 64
+    tmp->dp64 = (struct dirent64*)debug_malloc(sizeof(struct dirent64));
+    strcpy(tmp->dp64->d_name, "..");
+    tmp->next = NULL;
+
+    insertItemToHead(&head, tmp);
+
+    tmp = (struct dirent_obj *)debug_malloc(sizeof(struct dirent_obj));
+    tmp->dp = (struct dirent* )debug_malloc(sizeof(struct dirent));
+    strcpy(tmp->dp->d_name, ".");
+    //dirent 64
+    tmp->dp64 = (struct dirent64* )debug_malloc(sizeof(struct dirent64));
+    strcpy(tmp->dp64->d_name, ".");
+    tmp->next = NULL;
+
+    insertItemToHead(&head, tmp);
 
     //count
     *num = 0;
