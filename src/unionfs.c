@@ -356,18 +356,30 @@ void clearItems(struct dirent_obj** darr)
 bool parse_cmd_line(const char *cmdline, char *execute){
     if(is_file_type(cmdline, TYPE_FILE)){
         INITIAL_SYS(fopen)
-            FILE *f = real_fopen(cmdline, "r");
+        FILE *f = real_fopen(cmdline, "r");
         if(f){
             int c;
             //skip first \0
             while((c = fgetc(f)) != '\0');
             int idx = 0;
             char tmp[MAX_PATH];
-            while ((c = fgetc(f)) != '\0')
-            {
+            while ((c = fgetc(f)) != '\0'){
                 tmp[idx++] = c;
             }
             tmp[idx] = '\0';
+
+            if(strcmp(tmp, "--argv0") == 0){
+                //skip next value
+                while((c = fgetc(f)) == '\0'); //skip '\0'
+                while((c = fgetc(f)) != '\0'); //skip argv0 value
+                memset(tmp, '\0', MAX_PATH);
+                idx = 0;
+                //get real value
+                while((c = fgetc(f)) != '\0'){
+                    tmp[idx++] = c;
+                }
+                tmp[idx] = '\0';
+            }
 
             //get execuate
             char rel_path[MAX_PATH], layer_path[MAX_PATH];
@@ -568,23 +580,22 @@ int get_abs_path_base(const char *base, const char *path, char * abs_path, bool 
     }
 }
 
-int narrow_path(const char *path, char *resolved){
+int narrow_path(char *path){
     if(path && *path == '/'){
         char rel_path[MAX_PATH];
         char layer_path[MAX_PATH];
         int ret = get_relative_path_layer(path, rel_path, layer_path);
         if(ret == 0){
+            memset(path, '\0', MAX_PATH);
             if(strcmp(rel_path, ".") == 0){
-                strcpy(resolved,"/");
+                *path = '/';
             }else{
-                sprintf(resolved,"/%s",rel_path);
+                *path = '/';
+                memcpy(path + 1, rel_path, strlen(rel_path));
             }
-            return 0;
         }
-        strcpy(resolved, path);
         return 0;
     }
-    strcpy(resolved, path);
     return -1;
 }
 
@@ -935,7 +946,7 @@ bool xstat(const char *abs_path){
         return false;
     }
     INITIAL_SYS(__xstat)
-        struct stat st;
+    struct stat st;
     if(real___xstat(1,abs_path,&st) == 0){
         return true;
     }
@@ -1511,6 +1522,7 @@ char** splitStrs(const char* target, size_t* num, const char* sep){
     }
     return ret;
 }
+
 
 /**----------------------------------------------------------------------------------**/
 int fufs_open_impl(const char* function, ...){

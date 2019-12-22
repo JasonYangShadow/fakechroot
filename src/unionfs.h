@@ -107,7 +107,7 @@ int get_relative_path(const char * path, char * rel_path);
 int get_abs_path_base(const char *base, const char *path, char * abs_path, bool force);
 int get_relative_path_base(const char *base, const char *path, char * rel_path);
 int get_relative_path_layer(const char *path, char * rel_path, char * layer_path);
-int narrow_path(const char *path, char *resolved);
+int narrow_path(char *path);
 int append_to_diff(const char* content);
 bool is_file_type(const char *path,enum filetype t);
 bool transWh2path(const char *name, const char *pre, char *tname);

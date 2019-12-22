@@ -243,6 +243,7 @@ LOCAL int fakechroot_try_cmd_subst(char* env, const char* filename, char* cmd_su
  * ret size should be LD_MAX_SIZE
  */
 LOCAL int fakechroot_assemble_ld_path(char* ret){
+    debug("fakechroot init: assemble ld path starts");
     char *layers = getenv("ContainerLayers");
     if(!layers || (layers && *layers == '\0')){
         debug("could not get ContainerLayers env var, return");
@@ -313,7 +314,7 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
             }
         }
     }
-    //debug("fakechroot_assemble_ld_path assemble ld_path: %s", ret);
+    debug("fakechroot init: assemble ld path ends: %s", ret);
     return 0;
 }
 
@@ -324,6 +325,7 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
 
 //each time when current LD_LIBRARY_PATH does not include necessary generated necessary ld paths, we have to add them to it in order for correct searching
 LOCAL int fakechroot_merge_ld_path(){
+    debug("fakechroot init: merging ld path starts");
     char* ld_path = getenv("LD_LIBRARY_PATH");
     char* use_sys_lib = getenv("FAKECHROOT_USE_SYS_LIB");
     //here we declare a ld_path that could contain all info
@@ -355,6 +357,7 @@ LOCAL int fakechroot_merge_ld_path(){
             memcpy(ld_ret + strlen(ld_ret), ld_item, strlen(ld_item));
         }
     }
+
     //the algorithm acts like this:
     //split generated ld path and iterately check if substr exists in given target, if not, append it to the end of target
     //here we assume that target contains '\0' as the ending terminator.
@@ -401,6 +404,7 @@ LOCAL int fakechroot_merge_ld_path(){
         memset(ld_ret+strlen(ld_ret)-1,'\0',1);
         __setenv("LD_LIBRARY_PATH", ld_ret, 1);
     }
+    debug("fakechroot init: merge ld path ends");
     return 0;
 }
 

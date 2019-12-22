@@ -26,7 +26,7 @@
 #include <link.h>
 
 #include "libfakechroot.h"
-
+#include "unionfs.h"
 
 #define DL_ITERATE_PHDR_CALLBACK_ARGS struct dl_phdr_info * info, size_t size, void * data
 
@@ -35,8 +35,12 @@ static int (* dl_iterate_phdr_callback_saved)(DL_ITERATE_PHDR_CALLBACK_ARGS);
 static int dl_iterate_phdr_callback(DL_ITERATE_PHDR_CALLBACK_ARGS)
 {
     if (info->dlpi_name) {
-        narrow_chroot_path(info->dlpi_name);
-        debug("dl_iterate_phdr callback %s", info->dlpi_name);
+        debug("dl_iterate_phdr callback before: %s", info->dlpi_name);
+        char path_tmp[FAKECHROOT_PATH_MAX];
+        strcpy(path_tmp, info->dlpi_name);
+        narrow_path(path_tmp);
+        info->dlpi_name = path_tmp;
+        debug("dl_iterate_phdr callback after: %s", info->dlpi_name);
     }
     return dl_iterate_phdr_callback_saved(info, size, data);
 }

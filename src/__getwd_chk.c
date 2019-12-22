@@ -25,6 +25,7 @@
 #define _FORTIFY_SOURCE 2
 #include <stddef.h>
 #include "libfakechroot.h"
+#include "unionfs.h"
 
 
 wrapper(__getwd_chk, char *, (char * buf, size_t buflen))
@@ -35,7 +36,7 @@ wrapper(__getwd_chk, char *, (char * buf, size_t buflen))
     if ((cwd = nextcall(__getwd_chk)(buf, buflen)) == NULL) {
         return NULL;
     }
-    narrow_chroot_path(cwd);
+    narrow_path(cwd);
     return cwd;
 }
 

@@ -106,27 +106,25 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
         if(pathExcluded(tmp)){
             strncpy(buf, tmp, linksize);
         }else if(findFileInLayers(tmp,resolved)){
-            char resolved_narrow[MAX_PATH];
-            narrow_path(resolved, resolved_narrow);
-            linksize = strlen(resolved_narrow);
+            narrow_path(resolved);
+            linksize = strlen(resolved);
             if(linksize > bufsiz){
                 linksize = bufsiz;
             }
-            strncpy(buf,resolved_narrow,linksize);
+            strncpy(buf,resolved,linksize);
         }else{
             const char *container_root = getenv("ContainerRoot");
             char resolved_tmp[MAX_PATH];
-            char resolved_narrow[MAX_PATH];
             if(container_root){
                 if(*tmp == '/'){
                     sprintf(resolved_tmp, "%s%s",container_root, tmp);
                 }
-                narrow_path(resolved_tmp, resolved_narrow);
-                linksize = strlen(resolved_narrow);
+                narrow_path(resolved_tmp);
+                linksize = strlen(resolved_tmp);
                 if(linksize > bufsiz){
                     linksize = bufsiz;
                 }
-                strncpy(buf, resolved_narrow, linksize);
+                strncpy(buf, resolved_tmp, linksize);
             }else{
                 errno = ENOENT;
                 return -1;

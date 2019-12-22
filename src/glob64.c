@@ -41,9 +41,7 @@ wrapper(glob64, int, (const char * pattern, int flags, int (* errfunc) (const ch
     }
 
     for (i = 0; i < pglob->gl_pathc; i++) {
-        char resolved[MAX_PATH];
-        narrow_path(pglob->gl_pathv[i], resolved);
-        strcpy(pglob->gl_pathv[i], resolved);
+        narrow_path(pglob->gl_pathv[i]);
     }
     return rc;
 

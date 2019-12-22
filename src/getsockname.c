@@ -32,6 +32,7 @@
 
 #include "libfakechroot.h"
 #include "strlcpy.h"
+#include "unionfs.h"
 
 #ifdef HAVE_GETSOCKNAME_TYPE_ARG2___SOCKADDR_ARG__
 # define SOCKADDR(addr) ((addr).__sockaddr__)
@@ -62,7 +63,7 @@ wrapper(getsockname, int, (int s, GETSOCKNAME_TYPE_ARG2(addr), socklen_t * addrl
         if (addr_un->sun_path && *(addr_un->sun_path)) {
             char tmp[FAKECHROOT_PATH_MAX];
             strlcpy(tmp, addr_un->sun_path, FAKECHROOT_PATH_MAX);
-            narrow_chroot_path(tmp);
+            narrow_path(tmp);
             strlcpy(addr_un->sun_path, tmp, path_max);
             *addrlen = SUN_LEN(addr_un);
         }

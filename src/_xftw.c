@@ -24,13 +24,13 @@
 
 #include <sys/stat.h>
 #include "libfakechroot.h"
-
+#include "unionfs.h"
 
 static int (* _xftw_fn_saved)(const char * file, const struct stat * sb, int flag);
 
 static int _xftw_fn_wrapper (const char * file, const struct stat * sb, int flag)
 {
-    narrow_chroot_path(file);
+    narrow_path(file);
     return _xftw_fn_saved(file, sb, flag);
 }
 
