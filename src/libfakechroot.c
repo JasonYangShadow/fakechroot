@@ -265,6 +265,8 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
     //whether patched ld related stuff path exist
     char *ld_patched_path = getenv("FAKECHROOT_LDPatchPath");
 
+    debug("fakechroot init: assemble ld path current env vars: [ContainerLayers]: %s, [ContainerBasePath]: %s, [ContainerRoot]: %s, [Fakechroot_use_sys_lib]: %s, [Fakechroot_ldpatchpath]: %s", layers, base_root, con_root, use_sys_lib, ld_patched_path);
+
     if(!ret){
         debug("ret is null,return");
         return -1;
@@ -273,9 +275,10 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
     memset(ret, '\0', LD_MAX_SIZE);
 
     //add patched ld path firstly
-    if(ld_patched_path && *ld_patched_path){
+    if(ld_patched_path && *ld_patched_path != '\0'){
         memcpy(ret + strlen(ret), ld_patched_path, strlen(ld_patched_path));
         memcpy(ret + strlen(ret), ":", 1);
+        debug("fakechroot init: assemble ld path adds patched path: %s", ret);
     }
 
     char rest[FAKECHROOT_PATH_MAX];
