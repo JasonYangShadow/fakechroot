@@ -12,3 +12,9 @@ notifications:
 
 git:
   depth: false
+
+addons:
+  sonarcloud:
+    organizations: "jasonyangshadow-github"
+script:
+  - sonar-scanner
