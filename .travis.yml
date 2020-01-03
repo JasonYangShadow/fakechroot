@@ -1,8 +1,8 @@
-dist: xenial
+dist: trusty
 language: c
 
 before_script:
-  - ./shellbuild/ubuntu/16.04/init.sh
+  - ./shellbuild/ubuntu/14.04/init.sh
 
 script:
   - ./compile.sh
@@ -16,8 +16,5 @@ git:
 addons:
   sonarcloud:
     organizations: "jasonyangshadow-github"
-    token:
-      secure: "O0XYaCkUeA+2BjRynKl9vqzOnD4iLPTpo/8nmGMUk6A+1dWkM4N0BbnTfFARGBX2rB0GXssO/z0XK8WTOYMNDOPYSzm4NN488REXMKOrwtUHmwzVeLLZD3y5s43oXksytR5Nr/bjX2//F6d0Wm0iY8driWJoSFDf/uKTb5KTKbkqmeUCIhgo/rWeVuvaftwA6Bhl8cjGGdH4ht6qp9s60ot3rCn526UVmnKM78wOdxa6OREZFZNhK9ro3Crh7CWLRf6kUE0EPKGrZFMLqt+ew02qSWmuBrBGwuFtvXG1nTAsGcBO3VONVIE8n+u6nWISQY947MRqI8Rgx9aFE/aLhrsRV2M2udK40HtoxRF948E6ukF4fayTHnPDresP8Hq07odlzbjivyi4sJr2ntSbHg2JnA9kmvh68ckRL7vZVTlNbBZfcTBbwPciDr46+V3vPUsLuoPM64zeq1NZZEsECNQLjqP0FDTPo6LpfE8R/v5Xb0qR5/OF3nm7WOcNHQwYseBts6J13gu7zYOntyNcCHHg6crmp2ayturCDk5LckdLJmXt6+r3rwLcf6qkmYjNyUb8HJBt+RmS/2A4kWFhHh/VhCEeJ3urW2SF/RY0IYe5Kyd1XNavdUkalPME7nThK6pwTZCCmJJy/u8pd+cjx8kS8T3yFtJIpKq3vlKkkGk="
-
 script:
   - sonar-scanner
