@@ -1,43 +1,14 @@
-sudo: false
-
+dist: xenial
 language: c
 
-os:
-  - linux
-
-addons:
-  apt:
-    packages:
-      - automake
-      - colorgcc
-      - debootstrap
-      - libjemalloc1
-      - libtool
-      - lsb-release
-      - openjdk-6-jdk
-      - openjdk-7-jdk
-
 before_script:
-  - lsb_release -a
-  - $TRAVIS_CC --version
+  - ./shellbuild/ubuntu/16.04/init.sh
 
 script:
-  - ./autogen.sh
-  - ./configure CC=$TRAVIS_CC
-  - make
-  - make test
+  - ./compile.sh
 
-env:
+notifications:
+  email: false
 
-  global:
-    - TEST_DEBOOTSTRAP=1
-    - TEST_DEBOOTSTRAP_CACHE=cache
-
-  matrix:
-    - TRAVIS_CC=colorgcc EXTRA_CFLAGS='-Wall -Werror'
-    - TRAVIS_CC=clang EXTRA_CFLAGS='-Wall -Werror'
-    - TRAVIS_CC=clang EXTRA_CFLAGS='-std=c11 -Wall -Werror'
-
-cache:
-  directories:
-    - test/cache
+git:
+  depth: false
