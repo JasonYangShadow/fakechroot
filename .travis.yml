@@ -1,4 +1,4 @@
-dist: trusty
+dist: xenial
 language: c
 
 before_script:
@@ -12,9 +12,3 @@ notifications:
 
 git:
   depth: false
-
-addons:
-  sonarcloud:
-    organizations: "jasonyangshadow-github"
-script:
-  - sonar-scanner
