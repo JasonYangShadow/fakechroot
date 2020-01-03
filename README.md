@@ -1,3 +1,4 @@
+![Build Status](https://travis-ci.com/JasonYangShadow/fakechroot.svg?branch=master)
 # What is it?
 
 fakechroot runs a command in an environment were is additional possibility to
