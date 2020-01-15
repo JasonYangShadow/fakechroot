@@ -1599,6 +1599,24 @@ int fufs_open_impl(const char* function, ...){
                         log_fatal("copy from %s to %s encounters error", oldpath, destpath);
                         return -1;
                     }
+
+                    //here we have to do additional manipulation to update symlink, as the target is copyed to rw folder, but the symlink itself still exists in other layers
+                    if(is_file_type(path, TYPE_LINK)){
+                        char s_rel_path[MAX_PATH];
+                        char s_layer_path[MAX_PATH];
+                        int s_ret = get_relative_path_layer(path, s_rel_path, s_layer_path);
+                        if(ret == 0){
+                            //create symlink in rw folder
+                            INITIAL_SYS(symlink)
+                            char linkpath[MAX_PATH];
+                            sprintf(linkpath, "%s/%s", container_root, s_rel_path);
+                            log_debug("create symlink inside open from %s -> %s", destpath, linkpath);
+                            real_symlink(destpath, linkpath);
+                        }else{
+                            log_fatal("%s file doesn't exist in container", path);
+                            return -1;
+                        }
+                    }
                 }
                 goto end;
             }
