@@ -1606,12 +1606,23 @@ int fufs_open_impl(const char* function, ...){
                         char s_layer_path[MAX_PATH];
                         int s_ret = get_relative_path_layer(path, s_rel_path, s_layer_path);
                         if(ret == 0){
+                            //resolve symlink
+                            INITIAL_SYS(readlink)
+                            char s_link[MAX_PATH];
+                            ssize_t s_size = real_readlink(path, s_link, MAX_PATH-1);
+                            if(s_size == -1){
+                                log_fatal("resolve symlink: %s inside open encounters failure",path);
+                                return -1;
+                            }else{
+                                s_link[s_size] = '\0';
+                            }
+
                             //create symlink in rw folder
                             INITIAL_SYS(symlink)
                             char linkpath[MAX_PATH];
                             sprintf(linkpath, "%s/%s", container_root, s_rel_path);
-                            log_debug("create symlink inside open from %s -> %s", destpath, linkpath);
-                            real_symlink(destpath, linkpath);
+                            log_debug("create symlink inside open from %s -> %s", s_link, linkpath);
+                            real_symlink(s_link, linkpath);
                         }else{
                             log_fatal("%s file doesn't exist in container", path);
                             return -1;
