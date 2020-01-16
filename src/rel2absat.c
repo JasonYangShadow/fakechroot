@@ -142,6 +142,23 @@ LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
             }
         }else{
             if(!findFileInLayers(name_dup, resolved)){
+                //before redirecting path into container by force, let us check if it exists in sys lib path and patch path
+                const char * syslib_path = getenv("FAKECHROOT_SyslibPath");
+                const char * patch_path = getenv("FAKECHROOT_LDPatchPath");
+                if(syslib_path && *syslib_path != '\0'){
+                   if(strncmp(name_dup, syslib_path, strlen(syslib_path)) == 0){
+                       strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
+                       goto end;
+                   }
+                }
+                if(patch_path && *patch_path != '\0'){
+                    if(strncmp(name_dup, patch_path, strlen(patch_path)) == 0){
+                        strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
+                        goto end;
+                    }
+                }
+
+                //else we have to redirect the path into container by force
                 char rel_path[FAKECHROOT_PATH_MAX];
                 char layer_path[FAKECHROOT_PATH_MAX];
                 int ret = get_relative_path_layer(name_dup, rel_path, layer_path);

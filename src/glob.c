@@ -37,7 +37,11 @@ wrapper(glob, int, (const char * pattern, int flags, int (* errfunc) (const char
     }
 
     for (i = 0; i < pglob->gl_pathc; i++) {
-        narrow_path(pglob->gl_pathv[i]);
+        char tmp[FAKECHROOT_PATH_MAX];
+        strcpy(tmp, pglob->gl_pathv[i]);
+        narrow_path(tmp);
+        debug("glob narrow path: %s, result: %s", pglob->gl_pathv[i], tmp);
+        strcpy(pglob->gl_pathv[i], tmp);
     }
     return rc;
 }
