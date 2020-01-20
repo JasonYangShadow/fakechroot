@@ -26,6 +26,7 @@ libfakechroot_la_SOURCES = \
     __xstat64.h \
     _xftw.c \
     _xftw64.c \
+	__libc_start_main.c \
     access.c \
     acct.c \
     audit_log_acct_message.c \
