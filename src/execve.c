@@ -59,7 +59,9 @@ wrapper(execve, int, (const char * filename, char * const argv [], char * const 
     char c;
 
     char *elfloader = getenv("FAKECHROOT_ELFLOADER");
-    char *elfloader_opt_argv0 = "--argv0";
+    char *elfloader_opt_argv0 = NULL;
+    //20200120 we do not need argv0 any longer, because we use __libc_start_main to hack main functions
+    //char *elfloader_opt_argv0 = "--argv0";
 
     if(!elfloader){
         debug("execve start, could not find elfloader, return");
