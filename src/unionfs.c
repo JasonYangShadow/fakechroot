@@ -701,7 +701,7 @@ bool findFileInLayers(const char *file,char *resolved){
                         strcpy(resolved,file);
                         goto frelease;
                     }
-                    if(xstat(tmp)){
+                    if(lxstat(tmp)){
                         strcpy(resolved,tmp);
                         goto trelease;
                     }
@@ -718,7 +718,7 @@ bool findFileInLayers(const char *file,char *resolved){
                         strcpy(resolved,file);
                         goto frelease;
                     }
-                    if(xstat(tmp)){
+                    if(lxstat(tmp)){
                         strcpy(resolved,tmp);
                         goto trelease;
                     }
@@ -732,7 +732,7 @@ bool findFileInLayers(const char *file,char *resolved){
                     strcpy(resolved,file);
                     goto frelease;
                 }
-                if(xstat(tmp)){
+                if(lxstat(tmp)){
                     strcpy(resolved,tmp);
                     goto trelease;
                 }
@@ -781,7 +781,7 @@ bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
                         strcpy(resolved,file);
                         goto frelease;
                     }
-                    if(xstat(tmp)){
+                    if(lxstat(tmp)){
                         strcpy(resolved,tmp);
                         goto trelease;
                     }
@@ -798,7 +798,7 @@ bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
                         strcpy(resolved,file);
                         goto frelease;
                     }
-                    if(xstat(tmp)){
+                    if(lxstat(tmp)){
                         strcpy(resolved,tmp);
                         goto trelease;
                     }
@@ -812,7 +812,7 @@ bool findFileInLayersSkip(const char *file, char *resolved, size_t skip){
                     strcpy(resolved,file);
                     goto frelease;
                 }
-                if(xstat(tmp)){
+                if(lxstat(tmp)){
                     strcpy(resolved,tmp);
                     goto trelease;
                 }
@@ -1092,7 +1092,7 @@ bool iterResolveSymlink(const char *link, char *target){
             char layer_path[MAX_PATH];
             //we first get absolute path(resolved) rel and layer info 
             int ret = get_relative_path_layer(resolved, rel_path, layer_path);
-            log_debug("iterately resolve symlink, ret: %d, original path: %s, rel_path: %s, layer_path: %s", ret, resolved, rel_path, layer_path);
+            log_debug("iterately resolve symlink, ret: %d, original path: %s, rel_path: %s, layer_path: %s, rlink: %s", ret, resolved, rel_path, layer_path, rlink);
             if(ret == 0){
                 //original path is inside container
                 
@@ -1213,7 +1213,12 @@ bool iterResolveSymlink(const char *link, char *target){
 
             }else{
                 //original path is not inside container, meaning that it is either excluded path or escapted path
-                if(!pathExcluded(resolved)){
+                //if request symlink is in excluded path
+                if(pathExcluded(resolved)){
+                    log_debug("excluded symlink resolved, link: %s -> %s", resolved, rlink);
+                    strcpy(target, rlink);
+                    return true;
+                }else{
                     log_fatal("iterately resolve symlink path: %s escaped from container", resolved);
                     strcpy(target, resolved);
                     return false;
@@ -1356,10 +1361,15 @@ bool resolveSymlink(const char *link, char *target){
                     return true;
                 }
             }else{
-                //not inside container
-                if(!pathExcluded(link)){
-                    log_fatal("resolve symlink path: %s escaped from container", link);
-                    strcpy(target, link);
+                //original path is not inside container, meaning that it is either excluded path or escapted path
+                //if request symlink is in excluded path
+                if(pathExcluded(link)){
+                    log_debug("excluded symlink resolved, link: %s -> %s", link, resolved);
+                    strcpy(target, resolved);
+                    return true;
+                }else{
+                    log_fatal("iterately resolve symlink path: %s escaped from container", resolved);
+                    strcpy(target, resolved);
                     return false;
                 }
             }

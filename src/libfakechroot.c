@@ -429,7 +429,7 @@ LOCAL int expand_ld_path(char **values, size_t num){
             char *val_tmp_p = val_tmp;
             expand_chroot_path(val_tmp_p);
             if(!xstat(val_tmp_p) && !lxstat(val_tmp_p)){
-                //restore
+               //restore
                 log_debug("expand_str restore because target does not exists: val: %s", values[idx]);
                 continue;
             }
