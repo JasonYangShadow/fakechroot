@@ -116,12 +116,14 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
                 const char * patch_path = getenv("FAKECHROOT_LDPatchPath");
                 if(syslib_path && *syslib_path != '\0'){
                    if(strncmp(name_dup, syslib_path, strlen(syslib_path)) == 0){
+                       debug("rel2abs path:%s is included in syslib_path:%s", name_dup, syslib_path);
                        strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
                        goto end;
                    }
                 }
                 if(patch_path && *patch_path != '\0'){
                     if(strncmp(name_dup, patch_path, strlen(patch_path)) == 0){
+                        debug("rel2abs path:%s is included in patch_path:%s", name_dup, patch_path);
                         strlcpy(resolved, name_dup, FAKECHROOT_PATH_MAX);
                         goto end;
                     }
