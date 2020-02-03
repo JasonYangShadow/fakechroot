@@ -67,9 +67,9 @@ void getDirentsNoRet(const char* name, struct dirent_obj** darr, size_t *num){
 
 DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, struct dirent_obj** wh_darr, size_t *wh_num){
     INITIAL_SYS(opendir)
-        INITIAL_SYS(readdir)
+    INITIAL_SYS(readdir)
 
-        DIR* dirp = real_opendir(name);
+    DIR* dirp = real_opendir(name);
     struct dirent* entry = NULL;
     struct dirent_obj* curr = NULL;
     struct dirent_obj* wh_curr = NULL;
@@ -103,7 +103,7 @@ DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, stru
         //if .wh file
         char trans[MAX_PATH];
         if(transWh2path(tmp->d_name, PREFIX_WH, trans)){
-            //modifyu abs_path
+            //modify abs_path
             sprintf(tmp->d_name,"%s", trans);
             if (*wh_darr == NULL) {
                 *wh_darr = wh_curr = tmp;
@@ -130,7 +130,7 @@ DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, stru
 }
 void getDirentsWhNoRet(const char* name, struct dirent_obj** darr, size_t *num, struct dirent_obj** wh_darr, size_t *wh_num){
     INITIAL_SYS(closedir)
-        DIR* dirp = getDirentsWh(name, darr, num, wh_darr, wh_num);
+    DIR* dirp = getDirentsWh(name, darr, num, wh_darr, wh_num);
     real_closedir(dirp);
 }
 
@@ -2013,10 +2013,14 @@ struct dirent_obj* listDir(const char *path, int *num){
                     while(wh_items){
                         log_debug("item added to wh_map %s", wh_items->d_name);
                         add_item_hmap(wh_map, wh_items->d_name, NULL);
+                        //preset gar_tail to make sure it is the last one
+                        gar_tail = wh_items;
                         wh_items = wh_items->next;
+                        /**
                         if(wh_items && wh_items->next == NULL){
                             gar_tail = wh_items;
                         }
+                        **/
                     }
                     //otherwise merge content
                 } else{
@@ -2079,10 +2083,13 @@ struct dirent_obj* listDir(const char *path, int *num){
                     while(wh_items){
                         log_debug("item added to wh_map %s", wh_items->d_name);
                         add_item_hmap(wh_map, wh_items->d_name, NULL);
+                        gar_tail = wh_items;
                         wh_items = wh_items->next;
+                        /**
                         if(wh_items && wh_items->next == NULL){
                             gar_tail = wh_items;
                         }
+                        **/
                     }
                 } //else merge content ends
 
