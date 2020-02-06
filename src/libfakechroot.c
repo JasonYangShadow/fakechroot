@@ -285,11 +285,10 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
                 //initialize
                 memset(tmp_path, '\0', FAKECHROOT_PATH_MAX);
                 sprintf(tmp_path, "%s%s", con_root, ld_env_list[i]);
-                if(xstat(tmp_path)){
-                    //add : to the end of path
-                    memcpy(tmp_path + strlen(tmp_path), ":", 1);
-                    memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
-                }
+                //here for rw we add all paths by default ignoring whether they exist
+                //add : to the end of path
+                memcpy(tmp_path + strlen(tmp_path), ":", 1);
+                memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
             }
         }else{
             //other layers
