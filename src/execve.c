@@ -69,7 +69,7 @@ wrapper(execve, int, (const char * filename, char * const argv [], char * const 
     }
     debug("execve start(\"%s\", {\"%s\", ...}, {\"%s\", ...})", filename, argv[0], envp ? envp[0] : "(null)");
     //here we update ld_library_path firstly in order to add latest layers info into ld_library_path e.g rw layer. anothe way is that we directly add all combinations into ld_library_path by default without checking if dir exists
-    fakechroot_merge_ld_path();
+    fakechroot_merge_ld_path(NULL);
 
     strncpy(argv0, filename, FAKECHROOT_PATH_MAX);
 
@@ -426,7 +426,7 @@ error:
 //
 //    debug("execve start(\"%s\", {\"%s\", ...}, {\"%s\", ...})", filename, argv[0], envp ? envp[0] : "(null)");
 //    //here we update ld_library_path firstly in order to add latest layers info into ld_library_path e.g rw layer. anothe way is that we directly add all combinations into ld_library_path by default without checking if dir exists
-//    fakechroot_merge_ld_path();
+//    fakechroot_merge_ld_path(NULL);
 //
 //    int idx = 0;
 //    while(argv[idx]){

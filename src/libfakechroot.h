@@ -216,7 +216,7 @@ int fakechroot_localdir (const char *);
 int fakechroot_try_cmd_subst (char *, const char *, char *);
 //assemble ld path based on layers info
 int fakechroot_assemble_ld_path(char *);
-int fakechroot_merge_ld_path();
+int fakechroot_merge_ld_path(char *);
 int expand_ld_path(char **, size_t num);
 
 /* We don't want to define _BSD_SOURCE and _DEFAULT_SOURCE and include stdio.h */

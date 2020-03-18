@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 #include "util.h"
+#include "queue.h"
+#include "stack.h"
 
 #define MAX_PATH PATH_MAX
 #define MAX_ITEMS 1024*2
@@ -76,6 +78,8 @@ enum filetype{TYPE_FILE,TYPE_DIR,TYPE_LINK,TYPE_SOCK};
     DECLARE_SYS(getcwd,char*,(char* buf, size_t size))
     DECLARE_SYS(getwd,char*,(char* buf))
     DECLARE_SYS(closedir, int, (DIR* dir))
+    DECLARE_SYS(dlopen, void*, (const char *filename, int flag))
+    DECLARE_SYS(dlmopen, void*, (Lmid_t lmid, const char *filename, int flags))
 
     struct dirent_obj {
         struct dirent* dp;
@@ -92,6 +96,7 @@ DIR * getDirentsWh(const char* name, struct dirent_obj** darr, size_t *num, stru
 void getDirentsWhNoRet(const char* name, struct dirent_obj** darr, size_t *num, struct dirent_obj** wh_darr, size_t *wh_num);
 void getDirentsOnlyNames(const char* name, char ***names,size_t *num);
 char ** getLayerPaths(size_t *num);
+char ** getRealLayerPaths(size_t *num);
 void filterMemDirents(const char* name, struct dirent_obj* darr, size_t num);
 void deleteItemInChain(struct dirent_obj** darr, size_t num);
 void deleteItemInChainByPointer(struct dirent_obj** darr, struct dirent_obj** curr);
@@ -131,6 +136,10 @@ bool split_path(const char *path, char *parent, char *base);
 bool str_in_array(const char *str, const char **array, int num);
 bool createParentFolder(const char *path);
 char** splitStrs(const char*, size_t*, const char*);
+int gen_rpath_from_file(const char *src, char *ret_rpath);
+int gen_needed_libs_from_file(const char *src, char *libs);
+int gen_tree_dependency(Queue *q, Stack *st);
+int find_library(char *lib_name);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

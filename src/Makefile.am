@@ -55,6 +55,8 @@ libfakechroot_la_SOURCES = \
     execv.c \
     execve.c \
     execvp.c \
+	elf_reader.h \
+	elf_reader.c \
     faccessat.c \
     fchmodat.c \
     fchownat.c \
@@ -145,6 +147,10 @@ libfakechroot_la_SOURCES = \
     setenv.c \
     setenv.h \
     setxattr.c \
+	stack.h \
+	stack.c \
+	queue.h \
+	queue.c \
     stat.c \
     stat.h \
     stat64.c \

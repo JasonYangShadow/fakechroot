@@ -113,7 +113,6 @@ static int __add_to_environ(const char *name, const char *value,
         /* Build VAR=VAL if we called by setenv, not putenv.  */
         if (value != NULL) {
                 const size_t vallen = strlen(value) + 1;
-
                 var_val = malloc(namelen + 1 + vallen);
                 if (var_val == NULL) {
                         __set_errno(ENOMEM);

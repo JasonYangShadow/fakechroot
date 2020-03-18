@@ -144,11 +144,10 @@ void fakechroot_init(void)
         }
 
         __setenv("FAKECHROOT", "true", 1);
-        //__setenv("FAKECHROOT_VERSION", FAKECHROOT, 1);
     }
 
     //process ld_library_path
-    fakechroot_merge_ld_path();
+    fakechroot_merge_ld_path(NULL);
 }
 
 /* Lazily load function */
@@ -325,7 +324,7 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
  */
 
 //each time when current LD_LIBRARY_PATH does not include necessary generated necessary ld paths, we have to add them to it in order for correct searching
-LOCAL int fakechroot_merge_ld_path(){
+LOCAL int fakechroot_merge_ld_path(char *path){
     debug("fakechroot init: merging ld path starts");
     char* ld_path = getenv("LD_LIBRARY_PATH");
     char* use_sys_lib = getenv("FAKECHROOT_USE_SYS_LIB");
@@ -340,6 +339,15 @@ LOCAL int fakechroot_merge_ld_path(){
     if(ret != 0){
         debug("fakechroot could not assemble ld path");
         return -1;
+    }
+
+    //here we append path to the end of gen_ld_path_p for the following process
+    if(path && *path != '\0'){
+        if(gen_ld_path_p[strlen(gen_ld_path_p) - 1] != ':'){
+            gen_ld_path_p[strlen(gen_ld_path_p)] = ':';
+        }
+        memcpy(gen_ld_path_p + strlen(gen_ld_path_p), path, strlen(path));
+        debug("fakechroot gen ld path: %s", gen_ld_path_p);
     }
 
     //current ld_path

@@ -12,6 +12,8 @@
 #include "dedotdot.h"
 #include <fcntl.h>
 #include "util.h"
+#include "elf_reader.h"
+#include "libfakechroot.h"
 
 DIR* getDirents(const char* name, struct dirent_obj** darr, size_t* num)
 {
@@ -181,6 +183,45 @@ char ** getLayerPaths(size_t *num){
         while (str_tmp != NULL){
             paths[*num] = (char *)debug_malloc(MAX_PATH);
             sprintf(paths[*num], "%s/%s", ccroot, str_tmp);
+            str_tmp = strtok(NULL,":");
+            (*num) ++;
+        }
+        return paths;
+    }
+    *num = 0;
+    return NULL;
+}
+
+/**
+ * this function is quite similar to getLayerPaths except that other layers are real absolute path rather than symlink path
+ */
+char ** getRealLayerPaths(size_t *num){
+    const char * dockerbase = getenv("DockerBase");
+    const char* croot = getenv("ContainerRoot");
+    if(!croot){
+        log_fatal("can't get container root info");
+        return NULL;
+    }
+    if(dockerbase && strcmp(dockerbase,"TRUE") == 0){
+        const char * clayers = getenv("ContainerLayers");
+        const char * base = getenv("ContainerBasePath");
+        if (!clayers) {
+            log_fatal("can't get container layers info, please set env variable 'ContainerLayers'");
+            return NULL;
+        }
+        *num = 0;
+        char *str_tmp;
+        char **paths = (char**)debug_malloc(sizeof(char*) * MAX_LAYERS);
+        char cclayers[MAX_PATH];
+        strcpy(cclayers, clayers);
+        str_tmp = strtok(cclayers,":");
+        while (str_tmp != NULL){
+            paths[*num] = (char *)debug_malloc(MAX_PATH);
+            if(strcmp(str_tmp, "rw") == 0){
+                strcpy(paths[*num], croot);
+            }else{
+                sprintf(paths[*num], "%s/%s", base, str_tmp);
+            }
             str_tmp = strtok(NULL,":");
             (*num) ++;
         }
@@ -857,9 +898,9 @@ bool copyFile2RW(const char *abs_path, char *resolved){
     }
 
     INITIAL_SYS(fopen)
-        INITIAL_SYS(mkdir)
+    INITIAL_SYS(mkdir)
 
-        char rel_path[MAX_PATH];
+    char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
     int ret = get_relative_path_layer(abs_path, rel_path, layer_path);
     const char * container_root = getenv("ContainerRoot");
@@ -989,6 +1030,245 @@ int recurMkdir(const char *path){
         real_mkdir(dname, FOLDER_PERM);
     }
     return 0;
+}
+
+//generate rpath from file
+int gen_rpath_from_file(const char *src, char *ret_rpath){
+    log_debug("gen_rpath from file: %s starts", src);
+    if(xstat(src)){
+       INITIAL_SYS(open)
+       int fd = real_open(src, O_RDONLY, 0640);
+       if(fd){
+           char rpath_str[PATH_MAX];
+           memset(rpath_str, '\0', PATH_MAX);
+           int ret = getRPath(fd, rpath_str);
+           //we find rpath
+           log_debug("gen_rpath from file: %s, ret: %d, rpath: %s", src, ret, rpath_str);
+           if(ret == 0 && rpath_str && *rpath_str != '\0'){
+               char *origin_str = strstr(rpath_str, "$ORIGIN");
+               if(origin_str){
+                   //we find that "$ORIGIN" item, we need to expand it
+                   char rpath[PATH_MAX];
+                   memset(rpath, '\0', PATH_MAX);
+                   char *substr = strstr(origin_str, ":");
+                   if(substr){
+                       memcpy(rpath, origin_str + strlen("$ORIGIN"), substr - origin_str - strlen("$ORIGIN"));
+                   }else{
+                       strcpy(rpath, origin_str + strlen("$ORIGIN"));
+                   }
+
+                   log_debug("gen_rpath generated rpath with '$ORIGIN' trimmed: %s", rpath);
+                   char src_dup[PATH_MAX];
+                   strcpy(src_dup, src);
+                   char *dname = dirname(src_dup);
+                   //here we need to process rpath 
+                   if(rpath && *rpath != '\0'){
+                      //RPATH is $ORIGIN/../, we have to calculate it 
+                      memmove(rpath + strlen(dname), rpath, strlen(rpath));
+                      memcpy(rpath, dname, strlen(dname));
+                   }else{
+                      // RPATH is $ORIGIN, current folder
+                      strcpy(rpath, dname);
+                   }
+                   dedotdot(rpath);
+
+                   //here rpath is absolute path, we have to replace it with different layers
+                   char rel_path[PATH_MAX];
+                   char layer_path[PATH_MAX];
+                   int ret = get_relative_path_layer(rpath, rel_path, layer_path);
+                   if(ret == 0){
+                       size_t num;
+                       char **paths = getRealLayerPaths(&num);
+                       if(paths && num > 0){
+                           for(size_t i =0; i<num; i++){
+                               char tmp[PATH_MAX];
+                               sprintf(tmp, "%s/%s", paths[i], rel_path);
+                               if(xstat(tmp)){
+                                   sprintf(ret_rpath + strlen(ret_rpath), "%s:", tmp);
+                               }
+                           }
+                           //remove last ":"
+                           if(ret_rpath[strlen(ret_rpath) - 1] == ':'){
+                               ret_rpath[strlen(ret_rpath) - 1] = '\0';
+                           }
+
+                           if(paths){
+                               for(size_t i = 0; i<num; i++){
+                                   free(paths[i]);
+                               }
+                               free(paths);
+                           }
+                       }
+                       goto cleanup_succ;
+                   }else{
+                       log_fatal("rpath:%s is not inside container", rpath);
+                       goto cleanup_fail;
+                   }
+               }
+           } //rpath_str exists
+       }
+
+cleanup_fail:
+       //close file
+       if(fd){
+           close(fd);
+       }
+       return -1;
+
+cleanup_succ:
+       if(fd){
+           close(fd);
+       }
+       return 0;
+
+    }//end of xstat(src)
+    return -1;
+}
+
+//generate needed libs from give src file, the value libs does not include absolute path because this should be done by ld.so
+int gen_needed_libs_from_file(const char *src, char *libs){
+    log_debug("gen_needed_libs from file: %s starts", src);
+    if(xstat(src)){
+        INITIAL_SYS(open)
+        int fd = real_open(src, O_RDONLY, 0640);
+        if(fd){
+            char lib_str[PATH_MAX];
+            memset(lib_str,'\0', PATH_MAX);
+            int ret = getNeedLibs(fd, lib_str);
+            if(ret == 0 && lib_str && *lib_str != '\0'){
+                strcpy(libs, lib_str);
+                goto cleanup_succ;
+            }
+        }
+
+cleanup_fail:
+        if(fd){
+            close(fd);
+        }
+        return -1;
+
+cleanup_succ:
+        if(fd){
+            close(fd);
+        }
+        return 0;
+
+    }//end of xstat(src)
+
+    return -1;
+}
+
+//generate library dependency tree for target src
+int gen_tree_dependency(Queue *q, Stack *st){
+    INITIAL_SYS(dlopen)
+    while(q){
+        char qch[PATH_MAX];
+        bool bret = QueuePop(&q, qch);
+        if(!bret){
+            log_debug("gen_tree_dependency could not pop out item from Queue: %p", q);
+            return -1;
+        }
+        log_debug("gen_tree_dependency starts processing library: %s", qch);
+        void* hl = real_dlopen(qch, RTLD_NOLOAD);
+        if(!hl){
+            if(*qch != '/'){
+                int ret = find_library(qch);
+                if(ret == -1){
+                    log_debug("gen_tree_dependency could not resolve absolute path of library: %s", qch);
+                    return -1;
+                }
+            }
+
+            log_debug("gen_tree_dependency resolved full path of library: %s", qch);
+            //save it to stack
+            bret = StackPushUnique(st, qch);
+            if(!bret){
+                log_debug("gen_tree_dependency could not push item %s into stack: %p", qch, st);
+                return -1;
+            }
+
+            char libs[PATH_MAX];
+            int ret = gen_needed_libs_from_file(qch, libs);
+            if(ret == -1){
+                log_debug("gen_tree_dependency could not resolve needed libraries: %s", qch);
+                return -1;
+            }
+
+            //here we need to generate rpath and update ld_library_path
+            char rpath[PATH_MAX];
+            ret = gen_rpath_from_file(qch, rpath);
+            if(ret == 0 && strlen(rpath) > 0 && *rpath == '/'){
+                log_debug("generated rpath: %s of file: %s", rpath, qch);
+                //start merging rpath into ld_library_path
+                fakechroot_merge_ld_path(rpath);
+            }
+
+            log_debug("gen_tree_dependency resolved needed libs: %s", libs);
+            char *libs_p = libs;
+            char* token = NULL;
+            while((token = strtok_r(libs_p,":",&libs_p))){
+                if(token && *token){
+                    if(strncmp(token,"ld-linux", strlen("ld-linux")) == 0){
+                        log_debug("gen_tree_dependency resolves token: %s", token);
+                        continue;
+                    }
+                    bool bret = QueuePush(&q, token);
+                    if(!bret){
+                        log_debug("gen_tree_dependency could not push item into Queue: %p", q);
+                        return -1;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+//find the absolute path of target library based on LD_LIBRARY_PATH
+//input: lib_name
+//output: absolute path of lib_name
+int find_library(char *lib_name){
+    if(lib_name && *lib_name){
+        char *ld_path = getenv("LD_LIBRARY_PATH");
+        if(ld_path && *ld_path){
+            size_t num;
+            char** ld_splits = splitStrs(ld_path, &num, ":");
+            if(num > 0 && ld_splits){
+                for(int i = 0; i<num; i++){
+                    char tmp[PATH_MAX];
+                    if(*lib_name == '/'){
+                        sprintf(tmp, "%s%s", ld_splits[i], lib_name);
+                    }else{
+                        sprintf(tmp, "%s/%s", ld_splits[i], lib_name);
+                    }
+                    if(lxstat(tmp)){
+                        memset(lib_name, '\0', PATH_MAX);
+                        memmove(lib_name, tmp, PATH_MAX);
+                        goto cleanup_succ;
+                    }
+                }
+
+cleanup_fail:
+                if(ld_splits){
+                    for(int i = 0; i<num; i++){
+                        free(ld_splits[i]);
+                    }
+                    free(ld_splits);
+                }
+                return -1;
+
+cleanup_succ:
+                if(ld_splits){
+                    for(int i = 0; i<num; i++){
+                        free(ld_splits[i]);
+                    }
+                    free(ld_splits);
+                }
+                return 0;
+            }
+        }
+    }
+    return -1;
 }
 
 //path should be the folder name
