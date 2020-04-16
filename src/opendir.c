@@ -42,11 +42,6 @@ wrapper(opendir, DIR*, (const char* name))
         clearItems(&darr_list[fd]);
     }
 
-    if(pathExcluded(name)){
-        darr_list[fd] = darr;
-        return dirp;
-    }
-
     clearItems(&darr);
     darr = WRAPPER_FUFS(opendir,opendir,name)
     darr_list[fd] = darr;

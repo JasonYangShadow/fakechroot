@@ -1161,6 +1161,8 @@ cleanup_succ:
 //generate library dependency tree for target src
 int gen_tree_dependency(Queue *q, Stack *st){
     INITIAL_SYS(dlopen)
+    char global_rpath[LD_MAX_SIZE];
+    memset(global_rpath, '\0', LD_MAX_SIZE);
     while(q){
         char qch[PATH_MAX];
         bool bret = QueuePop(&q, qch);
@@ -1172,7 +1174,7 @@ int gen_tree_dependency(Queue *q, Stack *st){
         void* hl = real_dlopen(qch, RTLD_NOLOAD);
         if(!hl){
             if(*qch != '/'){
-                int ret = find_library(qch);
+                int ret = find_library(qch, global_rpath);
                 if(ret == -1){
                     log_debug("gen_tree_dependency could not resolve absolute path of library: %s", qch);
                     return -1;
@@ -1200,7 +1202,21 @@ int gen_tree_dependency(Queue *q, Stack *st){
             if(ret == 0 && strlen(rpath) > 0 && *rpath == '/'){
                 log_debug("generated rpath: %s of file: %s", rpath, qch);
                 //start merging rpath into ld_library_path
-                fakechroot_merge_ld_path(rpath);
+                //fakechroot_merge_ld_path(rpath);
+
+                char* rpath_p = rpath;
+                char *token = NULL;
+                while((token = strtok_r(rpath_p,":",&rpath_p))){
+                    if(strstr(global_rpath, token)){
+                        continue;
+                    }else{
+                        if(global_rpath && *global_rpath){
+                            sprintf(global_rpath, "%s:%s", global_rpath, token);
+                        }else{
+                            strcpy(global_rpath, token);
+                        }
+                    }
+                }
             }
 
             log_debug("gen_tree_dependency resolved needed libs: %s", libs);
@@ -1225,10 +1241,49 @@ int gen_tree_dependency(Queue *q, Stack *st){
 }
 
 //find the absolute path of target library based on LD_LIBRARY_PATH
-//input: lib_name
+//input: lib_name, rpath
 //output: absolute path of lib_name
-int find_library(char *lib_name){
+int find_library(char *lib_name, char *rpath){
+    log_debug("find_library starts processing: lib_name: %s, rpath: %s", lib_name, rpath);
     if(lib_name && *lib_name){
+        //first check rpath
+        if(rpath && *rpath){
+            size_t num;
+            char** rpath_splits = splitStrs(rpath, &num, ":");
+            if(num > 0 && rpath_splits){
+                for(int i = 0; i< num; i++){
+                    char tmp[PATH_MAX];
+                    if(*lib_name == '/'){
+                        sprintf(tmp, "%s%s", rpath_splits[i], lib_name);
+                    }else{
+                        sprintf(tmp, "%s/%s", rpath_splits[i], lib_name);
+                    }
+                    if(lxstat(tmp)){
+                        memset(lib_name, '\0', PATH_MAX);
+                        memmove(lib_name, tmp, PATH_MAX);
+
+                        //clean
+                        if(rpath_splits){
+                            for(int i = 0; i<num; i++){
+                                free(rpath_splits[i]);
+                            }
+                            free(rpath_splits);
+                        }
+                        return 0;
+                    } // end of successfully resolving
+                }
+
+                //clean
+                if(rpath_splits){
+                    for(int i = 0; i< num; i++){
+                        free(rpath_splits[i]);
+                    }
+                    free(rpath_splits);
+                }
+            }
+        } // if rpath is not NULL
+
+        //continue trying ld_library_path
         char *ld_path = getenv("LD_LIBRARY_PATH");
         if(ld_path && *ld_path){
             size_t num;
@@ -2234,6 +2289,7 @@ end:
 
 //this function scans content of given directory, and returns its content without whiteouted files
 struct dirent_obj* listDir(const char *path, int *num){
+    log_debug("listDir starts processing: %s", path);
     size_t layer_num;
     char ** layers = getLayerPaths(&layer_num);
     if(layer_num < 1){
@@ -2250,10 +2306,25 @@ struct dirent_obj* listDir(const char *path, int *num){
 
     char rel_path[MAX_PATH];
     char layer_path[MAX_PATH];
-    int ret = get_relative_path_layer(path, rel_path, layer_path);
-    if (ret == -1) {
-        log_fatal("%s is not inside the container, abs path: %s", rel_path, path);
-        return NULL;
+    if(pathExcluded(path)){
+        strcpy(rel_path, path + 1);
+        layers[layer_num] = (char *)debug_malloc(MAX_PATH);
+        strcpy(layers[layer_num], "/");
+        layer_num += 1;
+    }else{
+        int ret = get_relative_path_layer(path, rel_path, layer_path);
+        if (ret == -1) {
+            log_fatal("%s is not inside the container, abs path: %s", rel_path, path);
+            return NULL;
+        }
+        char npath[MAX_PATH];
+        npath[0] = '/';
+        strcpy(npath + 1, rel_path);
+        if(pathExcluded(npath)){
+            layers[layer_num] = (char *)debug_malloc(MAX_PATH);
+            strcpy(layers[layer_num], "/");
+            layer_num += 1; //add root layer
+        }
     }
 
     //used for garbage collected dirent_obj

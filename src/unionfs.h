@@ -139,7 +139,7 @@ char** splitStrs(const char*, size_t*, const char*);
 int gen_rpath_from_file(const char *src, char *ret_rpath);
 int gen_needed_libs_from_file(const char *src, char *libs);
 int gen_tree_dependency(Queue *q, Stack *st);
-int find_library(char *lib_name);
+int find_library(char *lib_name, char *rpath);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);
