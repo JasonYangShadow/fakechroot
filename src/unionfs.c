@@ -1341,8 +1341,11 @@ int recurMkdirMode(const char *path, mode_t mode){
     if(!xstat(path)){
         char dname[MAX_PATH];
         strcpy(dname, path);
-        dirname(dname);
-        recurMkdirMode(dname, mode);
+        char *dname_p = dname;
+        dname_p = dirname(dname_p);
+        if(!xstat(dname_p)){
+            recurMkdirMode(dname_p, mode);
+        }
     }
 
     if(!xstat(path)){
