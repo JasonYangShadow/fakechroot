@@ -19,8 +19,12 @@ function getLibrary()
     fi
 }
 
-PREFIX=/tmp
+PREFIX=~/compile
 FAKECHROOT=fakechroot
+
+#clean previous build
+rm -rf "$PREFIX"
+mkdir -p "$PREFIX"
 
 #step1 download and compile fakechroot
 #in centos 5.5 we could not establish ssl connection, but could use /vagrant share folder, so please exec the following command outside of virtualbox and copy the package to /vagrant share folder
@@ -61,14 +65,13 @@ if [ -f "$LIBSYS" ];then
 fi
 
 if [ -f /usr/bin/faked-sysv ];then
-    cp /usr/bin/faked-sysv /tmp/faked-sysv
+    cp /usr/bin/faked-sysv "$PREFIX"/faked-sysv
 fi
 
-if [ -f "/tmp/libmemcached.so.11" ] && [ -f "/tmp/libevent.so" ] && [ -f "/tmp/libfakechroot.so" ] && [ -f "/tmp/libfakeroot.so" ] && [ -f "/tmp/faked-sysv" ]; then
+if [ -f "$PREFIX/libmemcached.so.11" ] && [ -f "$PREFIX/libevent.so" ] && [ -f "$PREFIX/libfakechroot.so" ] && [ -f "$PREFIX/libfakeroot.so" ] && [ -f "$PREFIX/faked-sysv" ]; then
     cd "$PREFIX"
     tar czf dependency.tar.gz memcached libmemcached.so.11 libevent.so libfakechroot.so libfakeroot.so faked-sysv
     cp "$PREFIX/dependency.tar.gz" /vagrant
-    echo "All things done, dependency.tar.gz is located inside /vagrant share folder"
 else
     echo "could not find necessary dependencies, something goes wrong"
     exit -1

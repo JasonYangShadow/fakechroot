@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NAME=ubuntu-14.04
+NAME=ubuntu-12.04
 #arg1 => libname arg2 =>dependency
 
 function getLibrary()
@@ -19,10 +19,13 @@ function getLibrary()
     fi
 }
 
-PREFIX=/tmp
+PREFIX=~/compile
 FAKECHROOT=fakechroot
 
-sudo rm -rf "$PREFIX/*"
+#clean previous build
+rm -rf "$PREFIX"
+mkdir -p "$PREFIX"
+
 #step1 download and compile fakechroot
 wget -O "$PREFIX/$FAKECHROOT.zip" https://github.com/JasonYangShadow/fakechroot/archive/master.zip
 mkdir -p "$PREFIX/$FAKECHROOT"
@@ -55,14 +58,13 @@ if [ -f "$LIBSYS" ];then
 fi
 
 if [ -f /usr/bin/faked-sysv ];then
-    cp /usr/bin/faked-sysv /tmp/faked-sysv
+    cp /usr/bin/faked-sysv "$PREFIX"/faked-sysv
 fi
 
-if [ -f "/tmp/libmemcached.so.11" ] && [ -f "/tmp/libevent.so" ] && [ -f "/tmp/libfakechroot.so" ] && [ -f "/tmp/libfakeroot.so" ] && [ -f "/tmp/faked-sysv" ]; then
+if [ -f "$PREFIX/libmemcached.so.11" ] && [ -f "$PREFIX/libevent.so" ] && [ -f "$PREFIX/libfakechroot.so" ] && [ -f "$PREFIX/libfakeroot.so" ] && [ -f "$PREFIX/faked-sysv" ]; then
     cd "$PREFIX"
     tar czf dependency.tar.gz memcached libmemcached.so.11 libevent.so libfakechroot.so libfakeroot.so faked-sysv
     cp "$PREFIX/dependency.tar.gz" /vagrant
-    echo "$NAME:"`curl --upload-file "$PREFIX/dependency.tar.gz" https://transfer.sh/dependency.tar.gz`
 else
     echo "could not find necessary dependencies, something goes wrong"
     exit -1
