@@ -23,7 +23,6 @@
 
 #include "libfakechroot.h"
 #include "unionfs.h"
-#include <dirent.h>
 
 wrapper(opendir, DIR*, (const char* name))
 {

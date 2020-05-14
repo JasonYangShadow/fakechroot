@@ -32,6 +32,7 @@ wrapper(readdir64, struct dirent64 *, (DIR * dirp))
 {
     int fd = dirfd(dirp);
     struct dirent_obj* darr = darr_list[fd];
+    debug("readdir64 file descriptor: %d", fd);
     if(darr != NULL){
         struct dirent64* entry64 = popItemFromHeadV64(&darr);
         debug("readdir64 %s", entry64->d_name);

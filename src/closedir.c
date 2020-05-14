@@ -8,8 +8,8 @@
 extern struct dirent_obj* darr_list[MAX_ITEMS];
 wrapper(closedir, int, (DIR * dirp))
 {
-    debug("closedir");
     int fd = dirfd(dirp);
+    debug("closedir fd:%d", fd);
     struct dirent_obj* darr = darr_list[fd];
     if(darr){
         debug("closedir releasing preallocaed memory...");
