@@ -23,12 +23,19 @@
 #ifdef HAVE_EUIDACCESS
 
 #include "libfakechroot.h"
+#include "unionfs.h"
 
 
 wrapper(euidaccess, int, (const char * pathname, int mode))
 {
     debug("euidaccess(\"%s\", %d)", pathname, mode);
     expand_chroot_path(pathname);
+    if(lxstat(pathname) && is_file_type(pathname, TYPE_LINK)){
+        debug("euidaccess encounters symlink: %s, is working on resolving it", pathname);
+        char link[MAX_PATH];
+        iterResolveSymlink(pathname, link);
+        return nextcall(euidaccess)(link, mode);
+    }
     return nextcall(euidaccess)(pathname, mode);
 }
 

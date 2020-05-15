@@ -21,11 +21,17 @@
 #include <config.h>
 
 #include "libfakechroot.h"
-
+#include "unionfs.h"
 
 wrapper(access, int, (const char * pathname, int mode))
 {
     debug("access(\"%s\", %d)", pathname, mode);
     expand_chroot_path(pathname);
+    if(lxstat(pathname) && is_file_type(pathname, TYPE_LINK)){
+        debug("access encounters symlink: %s, is working on resolving it", pathname);
+        char link[MAX_PATH];
+        iterResolveSymlink(pathname, link);
+        return nextcall(access)(link, mode);
+    }
     return nextcall(access)(pathname, mode);
 }

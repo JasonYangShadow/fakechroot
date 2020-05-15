@@ -25,12 +25,18 @@
 #define _ATFILE_SOURCE
 #include <unistd.h>
 #include "libfakechroot.h"
-
+#include "unionfs.h"
 
 wrapper(faccessat, int, (int dirfd, const char * pathname, int mode, int flags))
 {
     debug("faccessat(%d, \"%s\", %d, %d)", dirfd, pathname, mode, flags);
     expand_chroot_path_at(dirfd, pathname);
+    if(lxstat(pathname) && is_file_type(pathname, TYPE_LINK)){
+        debug("faccessat encounters symlink: %s, is working on resolving it", pathname);
+        char link[MAX_PATH];
+        iterResolveSymlink(pathname, link);
+        return nextcall(faccessat)(dirfd, link, mode, flags);
+    }
     return nextcall(faccessat)(dirfd, pathname, mode, flags);
 }
 
