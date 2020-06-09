@@ -158,77 +158,67 @@ void getDirentsOnlyNames(const char* name, char ***names,size_t *num){
  * code is modified as all layers except rw layers are relocated
  */
 char ** getLayerPaths(size_t *num){
-    const char * dockerbase = getenv("DockerBase");
     const char* croot = getenv("ContainerRoot");
     if(!croot){
         log_fatal("can't get container root info");
         return NULL;
     }
-    if(dockerbase && strcmp(dockerbase,"TRUE") == 0){
-        const char * clayers = getenv("ContainerLayers");
-        //const char * base = getenv("ContainerBasePath");
-        if (!clayers) {
-            log_fatal("can't get container layers info, please set env variable 'ContainerLayers'");
-            return NULL;
-        }
-        char ccroot[MAX_PATH];
-        strcpy(ccroot, croot);
-        dirname(ccroot);
-        *num = 0;
-        char *str_tmp;
-        char **paths = (char**)debug_malloc(sizeof(char*) * MAX_LAYERS);
-        char cclayers[MAX_PATH];
-        strcpy(cclayers, clayers);
-        str_tmp = strtok(cclayers,":");
-        while (str_tmp != NULL){
-            paths[*num] = (char *)debug_malloc(MAX_PATH);
-            sprintf(paths[*num], "%s/%s", ccroot, str_tmp);
-            str_tmp = strtok(NULL,":");
-            (*num) ++;
-        }
-        return paths;
+    const char * clayers = getenv("ContainerLayers");
+    //const char * base = getenv("ContainerBasePath");
+    if (!clayers) {
+        log_fatal("can't get container layers info, please set env variable 'ContainerLayers'");
+        return NULL;
     }
+    char ccroot[MAX_PATH];
+    strcpy(ccroot, croot);
+    dirname(ccroot);
     *num = 0;
-    return NULL;
+    char *str_tmp;
+    char **paths = (char**)debug_malloc(sizeof(char*) * MAX_LAYERS);
+    char cclayers[MAX_PATH];
+    strcpy(cclayers, clayers);
+    str_tmp = strtok(cclayers,":");
+    while (str_tmp != NULL){
+        paths[*num] = (char *)debug_malloc(MAX_PATH);
+        sprintf(paths[*num], "%s/%s", ccroot, str_tmp);
+        str_tmp = strtok(NULL,":");
+        (*num) ++;
+    }
+    return paths;
 }
 
 /**
  * this function is quite similar to getLayerPaths except that other layers are real absolute path rather than symlink path
  */
 char ** getRealLayerPaths(size_t *num){
-    const char * dockerbase = getenv("DockerBase");
     const char* croot = getenv("ContainerRoot");
     if(!croot){
         log_fatal("can't get container root info");
         return NULL;
     }
-    if(dockerbase && strcmp(dockerbase,"TRUE") == 0){
-        const char * clayers = getenv("ContainerLayers");
-        const char * base = getenv("ContainerBasePath");
-        if (!clayers) {
-            log_fatal("can't get container layers info, please set env variable 'ContainerLayers'");
-            return NULL;
-        }
-        *num = 0;
-        char *str_tmp;
-        char **paths = (char**)debug_malloc(sizeof(char*) * MAX_LAYERS);
-        char cclayers[MAX_PATH];
-        strcpy(cclayers, clayers);
-        str_tmp = strtok(cclayers,":");
-        while (str_tmp != NULL){
-            paths[*num] = (char *)debug_malloc(MAX_PATH);
-            if(strcmp(str_tmp, "rw") == 0){
-                strcpy(paths[*num], croot);
-            }else{
-                sprintf(paths[*num], "%s/%s", base, str_tmp);
-            }
-            str_tmp = strtok(NULL,":");
-            (*num) ++;
-        }
-        return paths;
+    const char * clayers = getenv("ContainerLayers");
+    const char * base = getenv("ContainerBasePath");
+    if (!clayers) {
+        log_fatal("can't get container layers info, please set env variable 'ContainerLayers'");
+        return NULL;
     }
     *num = 0;
-    return NULL;
+    char *str_tmp;
+    char **paths = (char**)debug_malloc(sizeof(char*) * MAX_LAYERS);
+    char cclayers[MAX_PATH];
+    strcpy(cclayers, clayers);
+    str_tmp = strtok(cclayers,":");
+    while (str_tmp != NULL){
+        paths[*num] = (char *)debug_malloc(MAX_PATH);
+        if(strcmp(str_tmp, "rw") == 0){
+            strcpy(paths[*num], croot);
+        }else{
+            sprintf(paths[*num], "%s/%s", base, str_tmp);
+        }
+        str_tmp = strtok(NULL,":");
+        (*num) ++;
+    }
+    return paths;
 }
 
 void filterMemDirents(const char* name, struct dirent_obj* darr, size_t num)
@@ -662,26 +652,22 @@ int get_relative_path_base(const char *base, const char *path, char * rel_path){
 
 int append_to_diff(const char* content)
 {
-    const char* docker = getenv("DockerBase");
-    if (strcmp(docker, "TRUE") == 0) {
-        const char* diff_path = getenv("ContainerDiff");
-        if (diff_path) {
-            char target_file[MAX_PATH];
-            sprintf(target_file, "%s/.info", diff_path);
-            FILE* pfile = fopen(target_file, "a");
-            if (pfile == NULL) {
-                log_fatal("can't open file %s", target_file);
-                return -1;
-            }
-            fprintf(pfile, "%s\n", content);
-            fclose(pfile);
-            return 0;
-        } else {
-            log_debug("unable to get ContainerDiff variable while in docker_base mode");
+    const char* diff_path = getenv("ContainerDiff");
+    if (diff_path) {
+        char target_file[MAX_PATH];
+        sprintf(target_file, "%s/.info", diff_path);
+        FILE* pfile = fopen(target_file, "a");
+        if (pfile == NULL) {
+            log_fatal("can't open file %s", target_file);
             return -1;
         }
+        fprintf(pfile, "%s\n", content);
+        fclose(pfile);
+        return 0;
+    } else {
+        log_debug("unable to get ContainerDiff variable while in docker_base mode");
+        return -1;
     }
-    return 0;
 }
 
 //TYPE_LINK here is symlink
