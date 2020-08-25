@@ -36,7 +36,7 @@ wrapper(readdir, struct dirent *, (DIR * dirp))
         darr_list[fd] = darr;
         return entry;
     }else{
-        debug("default readdir");
+        debug("readdir from default fd: %d, gets nothing", fd);
         return NULL;
     }
 }

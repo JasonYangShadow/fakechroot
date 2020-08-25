@@ -1919,7 +1919,7 @@ int fufs_open_impl(const char* function, ...){
                 }
 
                 //read only
-                if(oflag == 0){
+                if((oflag & O_ACCMODE)== O_RDONLY){
                     goto end_file;
                 }
 
@@ -1972,7 +1972,7 @@ int fufs_open_impl(const char* function, ...){
 
 end_folder:
     log_debug("%s ends opening folder", destpath);
-    if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
+    if(!xstat(destpath) && (((oflag & O_ACCMODE) == O_WRONLY) || ((oflag & O_ACCMODE) == O_RDWR))){
         INITIAL_SYS(mkdir)
         int ret = recurMkdirMode(destpath,FOLDER_PERM);
         if(ret != 0){
@@ -1985,7 +1985,7 @@ end_folder:
 
 end_file:
     log_debug("%s ends opening file", destpath);
-    if(!xstat(destpath) && (oflag & O_WRONLY || oflag & O_RDWR)){
+    if(!xstat(destpath) && (((oflag & O_ACCMODE) == O_WRONLY) || ((oflag & O_ACCMODE) == O_RDWR))){
         INITIAL_SYS(mkdir)
         char dname[MAX_PATH];
         strcpy(dname,destpath);
@@ -1999,30 +1999,7 @@ end_file:
     goto end;
 
 end:
-    log_debug("%s %s ends with write flag? %d", function, destpath, ((oflag & O_WRONLY) || (oflag & O_RDWR)));
-    //here we add code for opening folder, which is only applied for open system calls
-    //if destpath is folder and we need to add its content into darr_list so that readdir can correctly access
-    //here destpath will be always an abosolute path as expand_chroot_path/expand_charoot_path_at will always be called before this function
-    int ret = -1;
-    if(strcmp(function,"openat") == 0){
-        ret = RETURN_SYS(openat,(ofd,destpath,oflag,mode))
-    }
-    if(strcmp(function,"open") == 0){
-        ret = RETURN_SYS(open,(destpath,oflag,mode))
-    }
-    if(strcmp(function,"openat64") == 0){
-        ret = RETURN_SYS(openat64,(ofd,destpath,oflag,mode))
-    }
-    if(strcmp(function,"open64") == 0){
-        ret = RETURN_SYS(open64,(destpath,oflag,mode))
-    }
-
-    if(ret == -1){
-        return ret;
-    }
-
     //here we check if destpath is folder
-    log_debug("%s ends opening path: %s with file descriptor: %d", function, destpath, ret);
     if(is_file_type(destpath, TYPE_DIR)){
         log_debug("%s target path: %s is folder, processing folder for darr_list", function, destpath);
         //here we have to use internal fd rather than fd returned by open
@@ -2044,7 +2021,24 @@ end:
         INITIAL_SYS(closedir)
         real_closedir(dirp);
     }
-    return ret;
+
+    log_debug("%s %s ends with write flag? %d", function, destpath, (((oflag & O_ACCMODE) == O_WRONLY) || ((oflag & O_ACCMODE) == O_RDWR)));
+    //here we add code for opening folder, which is only applied for open system calls
+    //if destpath is folder and we need to add its content into darr_list so that readdir can correctly access
+    //here destpath will be always an abosolute path as expand_chroot_path/expand_charoot_path_at will always be called before this function
+    int ret = -1;
+    if(strcmp(function,"openat") == 0){
+        return RETURN_SYS(openat,(ofd,destpath,oflag,mode))
+    }
+    if(strcmp(function,"open") == 0){
+        return RETURN_SYS(open,(destpath,oflag,mode))
+    }
+    if(strcmp(function,"openat64") == 0){
+        return RETURN_SYS(openat64,(ofd,destpath,oflag,mode))
+    }
+    if(strcmp(function,"open64") == 0){
+        return RETURN_SYS(open64,(destpath,oflag,mode))
+    }
 
 err:
     errno = EACCES;

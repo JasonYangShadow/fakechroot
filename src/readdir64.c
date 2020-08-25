@@ -39,7 +39,7 @@ wrapper(readdir64, struct dirent64 *, (DIR * dirp))
         darr_list[fd] = darr;
         return entry64;
     }else{
-        debug("default readdir64");
+        debug("readdir64 from default fd: %d, gets nothing", fd);
         return NULL;
     }
 }
