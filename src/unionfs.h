@@ -140,6 +140,7 @@ int gen_rpath_from_file(const char *src, char *ret_rpath);
 int gen_needed_libs_from_file(const char *src, char *libs);
 int gen_tree_dependency(Queue *q, Stack *st);
 int find_library(char *lib_name, char *rpath);
+bool get_path_from_fd(int fd, char *path);
 
 //fake union fs functions
 int fufs_chdir_impl(const char * function, ...);

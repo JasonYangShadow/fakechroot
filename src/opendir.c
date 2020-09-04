@@ -44,6 +44,7 @@ wrapper(opendir, DIR*, (const char* name))
     clearItems(&darr);
     darr = WRAPPER_FUFS(opendir,opendir,name)
     darr_list[fd] = darr;
+    debug("opendir save fd: %d on %s to darr list", fd, name);
     return dirp;
 }
 
