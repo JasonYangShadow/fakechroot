@@ -349,16 +349,20 @@ LOCAL int fakechroot_merge_ld_path(char *path){
         memcpy(gen_ld_path_p + strlen(gen_ld_path_p), path, strlen(path));
         debug("fakechroot gen ld path: %s", gen_ld_path_p);
     }
+    //gen_ld_path_p is the generated ld_library_path assembed by the ld_env_list combining different layers
 
     //current ld_path
     size_t num;
-    char** ld_splits = splitStrs(ld_path, &num, ":");
+    char** ld_splits;
+    ret = process_current_ld_path(ld_path, &ld_splits, &num);
+    if(ret != 0){
+        debug("fakechroot could not process current ld path");
+        return -1;
+    }
+    debug("process_current_ld_path returns with num: %d", num);
+
     //here we start expanding ld_path if necessary in order to make sure all items locate inside container
     if(num > 0 && ld_splits){
-        //if NOT appending sys lib in the end of LD_LIBRARY_PATH
-        if(!use_sys_lib){
-            expand_ld_path(ld_splits, num);
-        }
         for(size_t idx = 0; idx<num; idx++){
             char ld_item[FAKECHROOT_PATH_MAX];
             sprintf(ld_item, "%s:", ld_splits[idx]);
@@ -399,6 +403,7 @@ LOCAL int fakechroot_merge_ld_path(char *path){
         ld_ret[LD_MAX_SIZE-1] = '\0';
     }
 
+    //release ld items
     for(int i = 0; i<num; i++){
         if(ld_splits[i]){
             free(ld_splits[i]);
@@ -422,32 +427,104 @@ LOCAL int fakechroot_merge_ld_path(char *path){
  * we will not copy the orignial value, but directly memcpy and extend it
  */
 
-LOCAL int expand_ld_path(char **values, size_t num){
-    if(!values || num <= 0){
-        log_debug("expand_str fails because of null value");
+LOCAL int process_current_ld_path(char *ld_path, char ***values, size_t *num){
+    debug("process current ld path starts, ld_path: %s", ld_path);
+    if(!ld_path){
+        log_debug("could not process current ld path due to ld_path is null");
         return -1;
     }
+    char* use_sys_lib = getenv("FAKECHROOT_USE_SYS_LIB");
 
-    //we only expand if the value is absolute path
-    for(size_t idx = 0; idx<num; idx++){
-        if(values[idx] && *(values[idx]) == '/' && !is_inside_container(values[idx])){
-            char val_tmp[FAKECHROOT_PATH_MAX];
-            strcpy(val_tmp, values[idx]);
-            char *val_tmp_p = val_tmp;
-            expand_chroot_path(val_tmp_p);
-            if(!xstat(val_tmp_p) && !lxstat(val_tmp_p)){
-               //restore
-                log_debug("expand_str restore because target does not exists: val: %s", values[idx]);
-                continue;
-            }
-            if(strcmp(values[idx], val_tmp_p) == 0){
-                log_debug("expand_str returns because target is the same to original value: val: %s", values[idx]);
-                continue;
-            }
-            strcpy(values[idx], val_tmp_p);
-            log_debug("expand_str successfully expand ld_library_path: val: %s", values[idx]);
+    char* token = NULL;
+    *num = 0;
+    char ld_path_cp[LD_MAX_SIZE];
+    strcpy(ld_path_cp, ld_path);
+    char* ld_path_p = ld_path_cp;
+
+    //here we created MAX_LD_ITEMS
+    *values = (char **)malloc(sizeof(char *)*(MAX_LD_ITEMS));
+    size_t idx = 0;
+    char tmp[MAX_PATH];
+
+    //list all layers
+    size_t layer_num;
+    char ** layers = getLayerPaths(&layer_num);
+
+    while((token = strtok_r(ld_path_p, ":", &ld_path_p))){
+        //token is the current item, we need to check it, 
+        //here is the most important part
+        //we need to check if each item exists in ld_env_list, if exists, skip it
+        //then expand the item according to each layer
+        //besides, we have to realloc input values and associated num
+        memset(tmp, '\0', MAX_PATH);
+        strcpy(tmp, token);
+
+        //case 1, if it is excluded path, then we directly use it
+        if(pathExcluded(tmp)){
+            (*values)[idx] = (char *)malloc(MAX_PATH);
+            strcpy((*values)[idx], tmp);
+            goto end;
         }
+
+        //case 2, if use_sys_lib is set and the current token is in ld_env_list, then we directly use it
+        if(use_sys_lib && *use_sys_lib != '\0'){
+            for(int i = 0; i < ld_env_list_count; i++){
+                if(strcmp(tmp, ld_env_list[i]) == 0){
+                    (*values)[idx] = (char *)malloc(MAX_PATH);
+                    strcpy((*values)[idx], tmp);
+                    goto end;
+                }
+            }
+        }
+
+        //case 3, if the path is not inside container, then we need to expand it
+        if(tmp && *tmp == '/' && !is_inside_container(tmp)){
+            bool found = false;
+            for(size_t i =0; i < layer_num; i++){
+                char expand_path[MAX_PATH];
+                sprintf(expand_path, "%s%s", layers[i], tmp);
+                if(!xstat(expand_path) && !lxstat(expand_path)){
+                    log_debug("expand_str restore because target does not exists: val: %s", expand_path);
+                    continue;
+                }
+                (*values)[idx] = (char *)malloc(MAX_PATH);
+                found = true;
+                strcpy((*values)[idx], expand_path);
+                log_debug("expand_str successfully expand ld_library_path: val: %s", (*values)[idx]);
+                idx++;
+            }
+
+            //if not found inside different layers, meaning that it is a path in the host
+            if(!found){
+                (*values)[idx] = (char *) malloc(MAX_PATH);
+                strcpy((*values)[idx], tmp);
+                log_debug("expand_str directly append ld_library_path: val: %s", (*values)[idx]);
+                goto end;
+            }
+        }
+
+        //if the path is inside container, we directly append it
+       (*values)[idx] = (char *)malloc(MAX_PATH);
+       strcpy((*values)[idx], tmp);
+       goto end;
+
+end:
+        idx++;
     }
+
+    //clean up
+    if(layers){
+        for(size_t i = 0; i < layer_num; i ++){
+            free(layers[i]);
+        }
+        free(layers);
+        layers = NULL;
+    }
+
+    if(idx > 0){
+        *num = idx;
+    }
+
+    debug("process current ld path ends, ld_path: %s with num: %d", ld_path, *num);
     return 0;
 }
-
