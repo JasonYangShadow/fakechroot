@@ -52,9 +52,9 @@ patch ./clients/memflush.cc "$LIBMEM.patch"
 ./configure && make && sudo make install
 
 #step 3 download and compile msgpack locally
-wget -O "$PREFIX/$MSGPACK.zip" https://github.com/msgpack/msgpack-c/archive/master.zip
+wget -O "$PREFIX/$MSGPACK.tar.gz" https://github.com/msgpack/msgpack-c/releases/download/cpp-3.3.0/msgpack-3.3.0.tar.gz
 mkdir -p "$PREFIX/$MSGPACK"
-unzip "$PREFIX/$MSGPACK.zip" -d "$PREFIX/$MSGPACK"
+tar xzvf "$PREFIX/$MSGPACK.tar.gz" -C "$PREFIX/$MSGPACK"
 cd "$PREFIX/$MSGPACK/msgpack-c-master" && cmake . && make && sudo make install
 
 echo "Dependencies are installed and configured successfully!"
