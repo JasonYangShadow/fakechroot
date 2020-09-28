@@ -244,6 +244,7 @@ AC_CHECK_FUNCS(m4_normalize([
     openat
     openat64
     opendir
+    fdopendir
     pathconf
     popen
     posix_spawn
@@ -258,6 +259,7 @@ AC_CHECK_FUNCS(m4_normalize([
     removexattr
     rename
     renameat
+    renameat2
     revoke
     rmdir
     scandir

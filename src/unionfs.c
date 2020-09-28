@@ -2917,15 +2917,22 @@ int fufs_rename_impl(const char* function, ...){
     va_list args;
     va_start(args, function);
     int olddirfd, newdirfd;
+    unsigned int flags;
     const char *oldpath, *newpath;
-    if(strcmp(function,"renameat") == 0){
+    if(strcmp(function, "rename") == 0){
+        oldpath = va_arg(args, const char *);
+        newpath = va_arg(args, const char *);
+    }else if(strcmp(function, "renameat") == 0){
         olddirfd = va_arg(args, int);
         oldpath = va_arg(args, const char *);
         newdirfd = va_arg(args, int);
         newpath = va_arg(args, const char *);
-    }else{
+    }else if(strcmp(function, "renameat2") == 0){
+        olddirfd = va_arg(args, int);
         oldpath = va_arg(args, const char *);
+        newdirfd = va_arg(args, int);
         newpath = va_arg(args, const char *);
+        flags = va_arg(args, unsigned int);
     }
     va_end(args);
     INITIAL_SYS(creat)
@@ -2979,12 +2986,15 @@ int fufs_rename_impl(const char* function, ...){
 
     INITIAL_SYS(rename)
     INITIAL_SYS(renameat)
+    INITIAL_SYS(renameat2)
     log_debug("%s ends", function);
     if(strcmp(new_layer_path, container_root) == 0){
         if(strcmp(function,"renameat") == 0){
             return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,newpath))
-        }else{
+        }else if(strcmp(function, "rename") == 0){
             return RETURN_SYS(rename,(old_resolved,newpath))
+        }else if(strcmp(function, "renameat2") == 0){
+            return RETURN_SYS(renameat2,(olddirfd,old_resolved,newdirfd,newpath,flags))
         }
     }else{
         //newpath is not in rw folder, replacing it by force and delete original one
@@ -2993,8 +3003,10 @@ int fufs_rename_impl(const char* function, ...){
         unlink(newpath);
         if(strcmp(function,"renameat") == 0){
             return RETURN_SYS(renameat,(olddirfd,old_resolved,newdirfd,new_resolved))
-        }else{
+        }else if(strcmp(function, "rename") == 0){
             return RETURN_SYS(rename,(old_resolved,new_resolved))
+        }else if(strcmp(function, "renameat2") == 0){
+            return RETURN_SYS(renameat2,(olddirfd,old_resolved,newdirfd,new_resolved, flags))
         }
     }
     errno = EACCES;

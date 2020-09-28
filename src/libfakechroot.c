@@ -43,6 +43,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include "unionfs.h"
+#include "hashmap.h"
 
 #define EXCLUDE_LIST_SIZE 100
 
@@ -258,10 +259,14 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
         debug("could not get ContainerRoot env var, return");
         return -1;
     }
+
     //whether we append sys libs in the end of LD_LIBRARY_PATH
     char *use_sys_lib = getenv("FAKECHROOT_USE_SYS_LIB");
 
-    debug("fakechroot init: assemble ld path current env vars: [ContainerLayers]: %s, [ContainerBasePath]: %s, [ContainerRoot]: %s, [Fakechroot_use_sys_lib]: %s", layers, base_root, con_root, use_sys_lib);
+    //append fakechroot sys lib path
+    char *fakechroot_sys_lib_path = getenv("FAKECHROOT_SyslibPath");
+
+    debug("fakechroot init: assemble ld path current env vars: [ContainerLayers]: %s, [ContainerBasePath]: %s, [ContainerRoot]: %s, [Fakechroot_use_sys_lib]: %s,[Fakechroot_sys_lib]: %s", layers, base_root, con_root, use_sys_lib, fakechroot_sys_lib_path);
 
     if(!ret){
         debug("ret is null,return");
@@ -313,6 +318,11 @@ LOCAL int fakechroot_assemble_ld_path(char* ret){
                 memcpy(ret + strlen(ret), tmp_path, strlen(tmp_path));
             }
         }
+    }
+
+    if(fakechroot_sys_lib_path){
+        memcpy(ret + strlen(ret), ":", 1);
+        memcpy(ret + strlen(ret), fakechroot_sys_lib_path, strlen(fakechroot_sys_lib_path));
     }
     debug("fakechroot init: assemble ld path ends: %s", ret);
     return 0;
@@ -440,6 +450,8 @@ LOCAL int process_current_ld_path(char *ld_path, char ***values, size_t *num){
     char ld_path_cp[LD_MAX_SIZE];
     strcpy(ld_path_cp, ld_path);
     char* ld_path_p = ld_path_cp;
+    //create hash map for filtering
+    hmap_t* filter_map = create_hmap(MAX_LD_ITEMS);
 
     //here we created MAX_LD_ITEMS
     *values = (char **)malloc(sizeof(char *)*(MAX_LD_ITEMS));
@@ -459,10 +471,16 @@ LOCAL int process_current_ld_path(char *ld_path, char ***values, size_t *num){
         memset(tmp, '\0', MAX_PATH);
         strcpy(tmp, token);
 
+        //check if tmp already exists in hash map
+        if(contain_item_hmap(filter_map, tmp)){
+            continue;
+        }
+
         //case 1, if it is excluded path, then we directly use it
         if(pathExcluded(tmp)){
             (*values)[idx] = (char *)malloc(MAX_PATH);
             strcpy((*values)[idx], tmp);
+            add_item_hmap(filter_map, (*values)[idx], NULL);
             goto end;
         }
 
@@ -472,6 +490,7 @@ LOCAL int process_current_ld_path(char *ld_path, char ***values, size_t *num){
                 if(strcmp(tmp, ld_env_list[i]) == 0){
                     (*values)[idx] = (char *)malloc(MAX_PATH);
                     strcpy((*values)[idx], tmp);
+                    add_item_hmap(filter_map, (*values)[idx], NULL);
                     goto end;
                 }
             }
@@ -479,6 +498,7 @@ LOCAL int process_current_ld_path(char *ld_path, char ***values, size_t *num){
 
         //case 3, if the path is not inside container, then we need to expand it
         if(tmp && *tmp == '/' && !is_inside_container(tmp)){
+            log_debug("expand_str %s is not inside container", tmp);
             bool found = false;
             for(size_t i =0; i < layer_num; i++){
                 char expand_path[MAX_PATH];
@@ -487,29 +507,40 @@ LOCAL int process_current_ld_path(char *ld_path, char ***values, size_t *num){
                     log_debug("expand_str restore because target does not exists: val: %s", expand_path);
                     continue;
                 }
+                //if already added in filter map
+                if(contain_item_hmap(filter_map, expand_path)){
+                    log_debug("expand_str restore because %s already exists", expand_path);
+                    continue;
+                }
                 (*values)[idx] = (char *)malloc(MAX_PATH);
                 found = true;
                 strcpy((*values)[idx], expand_path);
                 log_debug("expand_str successfully expand ld_library_path: val: %s", (*values)[idx]);
+                add_item_hmap(filter_map, (*values)[idx], NULL);
                 idx++;
             }
 
-            //if not found inside different layers, meaning that it is a path in the host
+            //if not found inside different layers, meaning that it is a path in the host, we directly add it
             if(!found){
                 (*values)[idx] = (char *) malloc(MAX_PATH);
                 strcpy((*values)[idx], tmp);
+                add_item_hmap(filter_map, (*values)[idx], NULL);
                 log_debug("expand_str directly append ld_library_path: val: %s", (*values)[idx]);
                 goto end;
+            }else{
+                //if we already expand it, we drop the original one
+                continue;
             }
         }
 
         //if the path is inside container, we directly append it
        (*values)[idx] = (char *)malloc(MAX_PATH);
        strcpy((*values)[idx], tmp);
+       add_item_hmap(filter_map, (*values)[idx], NULL);
        goto end;
 
 end:
-        idx++;
+      idx++;
     }
 
     //clean up
@@ -519,6 +550,10 @@ end:
         }
         free(layers);
         layers = NULL;
+    }
+
+    if(filter_map){
+        destroy_hmap(filter_map);
     }
 
     if(idx > 0){
