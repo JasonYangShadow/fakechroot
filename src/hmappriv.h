@@ -12,6 +12,7 @@ struct ProcessInfo{
     char pname[PNAME_SIZE];
 };
 
+bool rt_mem_exec_map(const char* path, char** n_path);
 bool rt_mem_check(const char* function, int n, char*** rt_paths, ...);
 #endif
 

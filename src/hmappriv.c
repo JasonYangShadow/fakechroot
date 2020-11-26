@@ -27,6 +27,30 @@ bool get_process_info(struct ProcessInfo* pinfo){
     return false;
 }
 
+bool rt_mem_exec_map(const char* path, char** n_path){
+    char * exec_switch = getenv("FAKECHROOT_EXEC_SWITCH");
+    if(!exec_switch){
+        return false;
+    }
+    char * containerid = getenv("ContainerId");
+    if(containerid){
+        log_debug("start checking exec from remote memcahced, containerid: %s, path: %s", containerid, path);
+        char key[MEMCACHED_MAX_KEY];
+        //key format: exec:container_id:program path:path
+        //eg, exec:id:/usr/bin/vim
+        //value real_path against to the host
+        sprintf(key, "exec:%s:%s", containerid, path);
+        char* value = getValue(key);
+        log_debug("query remote memcached with key: %s, return value: %s", key, value);
+        if(value != NULL && *value){
+            strcpy(*n_path, value);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool rt_mem_con_check(const char* containerid, const char* function, int n, char** paths, char*** rt_paths){
     char key[MEMCACHED_MAX_KEY];
     //key format: container_id:program full path:system call wrapper

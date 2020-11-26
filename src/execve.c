@@ -35,6 +35,7 @@
 #include "readlink.h"
 #include "unionfs.h"
 #include <libgen.h>
+#include "hmappriv.h"
 
 wrapper(execve, int, (const char * filename, char * const argv [], char * const envp []))
 {
@@ -196,6 +197,20 @@ skip2: ;
     //make filename drop const
     char orig_filename[FAKECHROOT_PATH_MAX];
     strcpy(orig_filename, filename);
+
+    //here we need firstly to check if the program being called is mapped or not
+    //only if we open the specific swtich, otherwise, it won't be called
+    char * exec_switch = getenv("FAKECHROOT_EXEC_SWITCH");
+    if(filename && *filename == '/' && exec_switch){
+        char replace_path[FAKECHROOT_PATH_MAX];
+        char* replace_path_p = replace_path;
+        bool exec_ok = rt_mem_exec_map(filename, &replace_path_p);
+        if(exec_ok){
+            memset(orig_filename, '\0', FAKECHROOT_PATH_MAX);
+            strcpy(orig_filename, replace_path_p);
+            goto exe_excute;
+        }
+    }
 
     //here we have to check if filename is symlink
     expand_chroot_path(filename);

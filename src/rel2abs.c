@@ -31,6 +31,7 @@
 #include "dedotdot.h"
 #include "getcwd_real.h"
 #include "unionfs.h"
+#include "hmappriv.h"
 
 /**
 LOCAL char * rel2abs(const char * name, char * resolved)
@@ -88,6 +89,7 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
     const char * container_root = getenv("ContainerRoot");
     const char * exclude_ex_path = getenv("FAKECHROOT_EXCLUDE_EX_PATH");
     if (*name_dup == '/') {
+        //if the path is absolute path
         if(pathExcluded(name_dup)){
             //here for some specific exclude paths("/sys/fs/kdbus/*"), we modify the path and redirect it into container rather than host
             bool isfind = false;
@@ -129,6 +131,18 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
                     }
                 }
 
+                //before redirecting the path into container by force
+                //let me check the remote memcached if there are any mappings
+                //this one really decreases the performance
+                char replace_path[FAKECHROOT_PATH_MAX];
+                char* replace_path_p = replace_path;
+                bool exec_ok = rt_mem_exec_map(name_dup, &replace_path_p);
+                if(exec_ok){
+                    debug("rel2abs path: %s is included in remote exec map: %s", name_dup, replace_path_p);
+                    strlcpy(resolved, replace_path_p, FAKECHROOT_PATH_MAX);
+                    goto end;
+                }
+
                 //else we have to redirect the path into container by force
                 char rel_path[FAKECHROOT_PATH_MAX];
                 char layer_path[FAKECHROOT_PATH_MAX];
@@ -141,6 +155,7 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
             }
         }
     }else {
+        //if the path is relative path
         char tmp[FAKECHROOT_PATH_MAX];
         sprintf(tmp,"%s/%s",cwd,name_dup);
 
