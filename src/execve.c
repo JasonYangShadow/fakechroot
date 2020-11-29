@@ -94,7 +94,7 @@ wrapper(execve, int, (const char * filename, char * const argv [], char * const 
     newenvp = malloc( (sizeenvp + preserve_env_list_count + 1) * sizeof (char *) );
     if (newenvp == NULL) {
         __set_errno(ENOMEM);
-        return -1;
+        return errno;
     }
     newenvppos = 0;
 
@@ -158,7 +158,7 @@ skip2: ;
 
     if (newenvp == NULL) {
         __set_errno(ENOMEM);
-        return -1;
+        return errno;
     }
 
     if (do_cmd_subst) {
@@ -243,7 +243,7 @@ skip2: ;
         debug("could not find executable program with name: %s", orig_filename);
 exe_err:
         __set_errno(ENOENT);
-        return -1;
+        return errno;
 
 exe_excute:
         debug("try to execute exposed program %s from host", orig_filename);
@@ -298,7 +298,7 @@ exe_excute:
     close(file);
     if (i == -1) {
         __set_errno(ENOENT);
-        return -1;
+        return errno;
     }
 
     //hashbang here may be ELF
