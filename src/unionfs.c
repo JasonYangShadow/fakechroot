@@ -2528,6 +2528,7 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
 }
 
 int fufs_mkdir_impl(const char* function,...){
+    int errsv = errno;
     va_list args;
     va_start(args,function);
     int dirfd = -1;
@@ -2566,8 +2567,13 @@ int fufs_mkdir_impl(const char* function,...){
 
     dedotdot(resolved);
     log_debug("start mkdir %s", resolved);
-    return recurMkdirMode(resolved, mode);
-
+    int ret = recurMkdirMode(resolved, mode);
+    if(ret == 0){
+        //restore correct errno
+        errno = errsv;
+        return ret;
+    }
+    return ret
     /**
       INITIAL_SYS(mkdir)
       INITIAL_SYS(mkdirat)
