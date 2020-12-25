@@ -2567,7 +2567,7 @@ int fufs_mkdir_impl(const char* function,...){
 
     dedotdot(resolved);
     log_debug("start mkdir %s", resolved);
-    int ret = recurMkdirMode(resolved, mode);
+    ret = recurMkdirMode(resolved, mode);
     if(ret == 0){
         //restore correct errno
         errno = errsv;
