@@ -2573,7 +2573,7 @@ int fufs_mkdir_impl(const char* function,...){
         errno = errsv;
         return ret;
     }
-    return ret
+    return ret;
     /**
       INITIAL_SYS(mkdir)
       INITIAL_SYS(mkdirat)
