@@ -34,6 +34,7 @@
 
 wrapper_alias(openat64, int, (int dirfd, const char * pathname, int flags, ...))
 {
+    int errsv = errno;
     int mode = 0;
 
     va_list arg;
@@ -50,9 +51,14 @@ wrapper_alias(openat64, int, (int dirfd, const char * pathname, int flags, ...))
     char** rt_paths;
     bool r = rt_mem_check("openat64", 1, &rt_paths, pathname);
     if (r && rt_paths){
+        errno = errsv;
         return nextcall(openat64)(dirfd, rt_paths[0], flags, mode);
     }else {
-      return WRAPPER_FUFS(open, openat64, dirfd, pathname, flags, mode)
+      int ret = WRAPPER_FUFS(open, openat64, dirfd, pathname, flags, mode)
+      if(ret > 0){
+          errno = errsv;
+      }
+      return ret;
     }
 }
 

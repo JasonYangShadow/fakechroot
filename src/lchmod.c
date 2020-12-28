@@ -29,9 +29,14 @@
 
 wrapper(lchmod, int, (const char * path, mode_t mode))
 {
+    int errsv = errno;
     debug("lchmod(\"%s\", 0%o)", path, mode);
     expand_chroot_path(path);
-    return WRAPPER_FUFS(chmod, lchmod, path, mode)
+    int ret = WRAPPER_FUFS(chmod, lchmod, path, mode)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

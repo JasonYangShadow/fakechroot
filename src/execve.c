@@ -247,50 +247,121 @@ exe_err:
 
 exe_excute:
         debug("try to execute exposed program %s from host", orig_filename);
+        //here we restore the saved host env vars
+        const char * config_path = getenv("ContainerConfigPath");
+        char env_path[FAKECHROOT_PATH_MAX];
+        char line[FAKECHROOT_PATH_MAX];
         int menvppos = 0;
-        char ** menvp = malloc(sizeof(char *)*newenvppos);
-        if(!menvp){
-            goto exe_err;
-        }
-        char ** mep;
-        for(mep = newenvp; *mep != NULL; mep++){
-            char tvar[1024];
-            strncpy(tvar, *mep, 1024);
-            tvar[1023] = '\0';
-            //clear unecessary env vars
-            if(strncmp(tvar,"LD_PRELOAD",strlen("LD_PRELOAD")) == 0){
-                continue;
+        int menvcount = 0;
+        sprintf(env_path, "%s/.env", config_path);
+        if(xstat(env_path)){
+            //if .env file exists
+            INITIAL_SYS(fopen)            
+            FILE* fp = real_fopen(env_path, "r");
+            if(!fp){
+                goto exe_err;
             }
-            if(strncmp(tvar,"FAKECHROOT",strlen("FAKECHROOT")) == 0){
-                continue;
-            }
-            if(strncmp(tvar,"Container",strlen("Container")) == 0){
-                continue;
-            }
-            if(strncmp(tvar,"PWD",strlen("PWD")) == 0){
-                continue;
-            }
-            if(strncmp(tvar,"LD_LIBRARY_PATH",strlen("LD_LIBRARY_PATH")) == 0){
-                continue;
-            }
-            if(strncmp(tvar,"SHELL",strlen("SHELL")) == 0){
-                continue;
-            }
-            if(strncmp(tvar,"__",strlen("__")) == 0){
-                continue;
-            }
-            if(strncmp(tvar,"MEMCACHED_PID",strlen("MEMCACHED_PID")) == 0){
-                continue;
+            if(fgets(line, FAKECHROOT_PATH_MAX, fp)){
+                //read the count of env vars
+                menvcount = atoi(line);
+                debug("exe_excute plans to restore %d env vars from external file", menvcount);
             }
 
-            debug("env var %s will be added",*mep);
-            menvp[menvppos] = *mep;
+            //starts initialize menvp
+            //we need to add another 3 environment variables (container id & contaienr root path && pwd) ,the other one is for NULL
+            char ** menvp = malloc(sizeof(char *)*(menvcount+4));
+            memset(line, '\0', FAKECHROOT_PATH_MAX);
+            while(fgets(line, FAKECHROOT_PATH_MAX, fp)){
+                if(line[strlen(line) - 1] == '\n'){
+                    line[strlen(line) - 1] = '\0';
+                }
+                menvp[menvppos] = malloc(strlen(line) + 1);
+                strcpy(menvp[menvppos], line);
+                memset(line, '\0', FAKECHROOT_PATH_MAX);
+                debug("exe_excute restores env var: %s", menvp[menvppos]);
+                menvppos++;
+            }
+
+            //here we add two additional env vars
+            const char * container_id = getenv("ContainerId");
+            const char * container_root = getenv("ContainerRoot");
+            char container_cwd[FAKECHROOT_PATH_MAX];
+            if(!getcwd(container_cwd, FAKECHROOT_PATH_MAX)){
+                goto error;
+            }
+
+            menvp[menvppos] = malloc(strlen(container_id) + 13);
+            strcpy(menvp[menvppos], "ContainerId=");
+            strcat(menvp[menvppos], container_id);
             menvppos++;
+
+            menvp[menvppos] = malloc(strlen(container_root) + 15);
+            strcpy(menvp[menvppos], "ContainerRoot=");
+            strcat(menvp[menvppos], container_root);
+            menvppos++;
+
+            menvp[menvppos] = malloc(strlen(container_cwd) + 14);
+            strcpy(menvp[menvppos], "ContainerCWD=");
+            strcat(menvp[menvppos], container_cwd);
+            menvppos++;
+
+            menvp[menvppos] = NULL;
+            fclose(fp);
+
+            //copy done
+            debug("exe_excute starts execute exposed program %s from the host", orig_filename);
+            status = nextcall(execve)(orig_filename, (char * const *)argv, menvp);
+            free(menvp);
+            goto error;
         }
-        menvp[menvppos] = NULL;
-        status = nextcall(execve)(orig_filename, (char * const *)argv, menvp);
-        free(menvp);
+
+        debug("exe_excute host program: %s, could not find .env file from: %s", orig_filename, env_path);
+        __set_errno(ENOENT);
         goto error;
+        //int menvppos = 0;
+        //char ** menvp = malloc(sizeof(char *)*newenvppos);
+        //if(!menvp){
+        //    goto exe_err;
+        //}
+        //char ** mep;
+        //for(mep = newenvp; *mep != NULL; mep++){
+        //    char tvar[1024];
+        //    strncpy(tvar, *mep, 1024);
+        //    tvar[1023] = '\0';
+        //    //clear unecessary env vars
+        //    if(strncmp(tvar,"LD_PRELOAD",strlen("LD_PRELOAD")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"FAKECHROOT",strlen("FAKECHROOT")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"Container",strlen("Container")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"PWD",strlen("PWD")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"LD_LIBRARY_PATH",strlen("LD_LIBRARY_PATH")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"SHELL",strlen("SHELL")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"__",strlen("__")) == 0){
+        //        continue;
+        //    }
+        //    if(strncmp(tvar,"MEMCACHED_PID",strlen("MEMCACHED_PID")) == 0){
+        //        continue;
+        //    }
+
+        //    debug("env var %s will be added",*mep);
+        //    menvp[menvppos] = *mep;
+        //    menvppos++;
+        //}
+        //menvp[menvppos] = NULL;
+        //status = nextcall(execve)(orig_filename, (char * const *)argv, menvp);
+        //free(menvp);
+        //goto error;
     }
 
     //read hashbang info

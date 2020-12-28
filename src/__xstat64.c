@@ -35,14 +35,17 @@
 
 wrapper(__xstat64, int, (int ver, const char * filename, struct stat64 * buf))
 {
+    int errsv = errno;
     debug("__xstat64(%d, \"%s\", &buf)", ver, filename);
     expand_chroot_path(filename);
     if(lxstat(filename) && is_file_type(filename, TYPE_LINK)){
         debug("__xstat64 encounters symlink: %s, is working on resolving it", filename);
         char link[MAX_PATH];
         iterResolveSymlink(filename, link);
+        errno = errsv;
         return nextcall(__xstat64)(ver, link, buf);
     }
+    errno = errsv;
     return nextcall(__xstat64)(ver, filename, buf);
 }
 

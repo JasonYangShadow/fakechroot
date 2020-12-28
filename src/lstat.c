@@ -30,12 +30,14 @@
 
 wrapper(lstat, int, (const char * filename, struct stat * buf))
 {
+    int errsv = errno;
     char tmp[FAKECHROOT_PATH_MAX];
     int retval;
     READLINK_TYPE_RETURN linksize;
 
     debug("lstat(\"%s\", &buf)", filename);
     expand_chroot_path(filename);
+    errno = errsv;
     retval = nextcall(lstat)(filename, buf);
     if((retval == 0) && (buf->st_mode & S_IFMT) == S_IFLNK){
         INITIAL_SYS(readlink)

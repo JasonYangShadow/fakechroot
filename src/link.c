@@ -51,6 +51,7 @@
 
 wrapper(link, int, (const char *oldpath, const char *newpath))
 {
+    int errsv = errno;
     debug("link(\"%s\", \"%s\")", oldpath, newpath);
     char old_resolved[MAX_PATH];
     const char * container_root = getenv("ContainerRoot");
@@ -127,5 +128,9 @@ wrapper(link, int, (const char *oldpath, const char *newpath))
     expand_chroot_path(newpath);
 
     debug("link oldpath: %s, newpath: %s", old_resolved, newpath);
-    return WRAPPER_FUFS(link,link,old_resolved,newpath)
+    int ret = WRAPPER_FUFS(link,link,old_resolved,newpath)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }

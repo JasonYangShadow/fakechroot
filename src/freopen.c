@@ -26,7 +26,12 @@
 
 wrapper(freopen, FILE *, (const char * path, const char * mode, FILE * stream))
 {
+    int errsv = errno;
     debug("freopen(\"%s\", \"%s\", &stream)", path, mode);
     expand_chroot_path(path);
-    return WRAPPER_FUFS(fopen,freopen,path,mode,stream)
+    FILE* ret = WRAPPER_FUFS(fopen,freopen,path,mode,stream)
+    if(ret != NULL){
+        errno = errsv;
+    }
+    return ret;
 }

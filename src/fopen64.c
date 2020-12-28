@@ -29,9 +29,14 @@
 
 wrapper(fopen64, FILE *, (const char * path, const char * mode))
 {
+    int errsv = errno;
     debug("fopen64(\"%s\", \"%s\")", path, mode);
     expand_chroot_path(path);
-    return WRAPPER_FUFS(fopen,fopen64,path,mode)
+    FILE* ret = WRAPPER_FUFS(fopen,fopen64,path,mode)
+    if(ret != NULL){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

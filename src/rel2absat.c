@@ -98,6 +98,7 @@ error:
 
 LOCAL char * rel2absatLayer(int dirfd, const char * name, char * resolved)
 {
+    int errsv = errno;
     int cwdfd = 0;
     char cwd[FAKECHROOT_PATH_MAX];
 
@@ -367,6 +368,7 @@ error:
     }
     resolved = NULL;
     debug("rel2absatLayer error(%d, \"%s\", NULL)", dirfd, name_dup);
+    errno = errsv;
     return resolved;
 }
 

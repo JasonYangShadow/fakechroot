@@ -1550,10 +1550,32 @@ bool iterResolveSymlink(const char *link, char *target){
                 //original path is not inside container, meaning that it is either excluded path or escapted path
                 //if request symlink is in excluded path
                 if(pathExcluded(resolved)){
-                    log_debug("excluded symlink resolved, link: %s -> %s", resolved, rlink);
-                    strcpy(target, rlink);
+                    //if in excluded path, we have to resolve it
+                    if(*rlink != '/'){
+                        char abs_path[MAX_PATH];
+                        char parent[MAX_PATH];
+                        char base[MAX_PATH];
+                        bool ret = split_path(resolved, parent, base);
+                        if(ret){
+                            sprintf(abs_path, "%s/%s", parent, rlink);
+                            //reset and copy to resolved
+                            memset(resolved, '\0', MAX_PATH);
+                            strcpy(resolved, abs_path);
+                            //dedotdot resolved path
+                            dedotdot(resolved);
+                            // here we convert path to absolute path according to container base path. i.e, /p1/f1
+                        }
+                    }else{
+                        //if the rlink is absolute link, then we directly use it
+                        memset(resolved, '\0', MAX_PATH);
+                        strcpy(resolved, rlink);
+                        dedotdot(resolved);
+                    }     
+                    log_debug("excluded symlink resolved, link: %s", resolved);
+                    strcpy(target, resolved);
                     return true;
                 }else{
+                    //not in excluded path, meaning that it is an escaped path
                     log_fatal("iterately resolve symlink path: %s escaped from container", resolved);
                     strcpy(target, resolved);
                     return false;
@@ -2528,7 +2550,6 @@ struct dirent_obj* fufs_opendir_impl(const char* function,...){
 }
 
 int fufs_mkdir_impl(const char* function,...){
-    int errsv = errno;
     va_list args;
     va_start(args,function);
     int dirfd = -1;
@@ -2567,13 +2588,7 @@ int fufs_mkdir_impl(const char* function,...){
 
     dedotdot(resolved);
     log_debug("start mkdir %s", resolved);
-    ret = recurMkdirMode(resolved, mode);
-    if(ret == 0){
-        //restore correct errno
-        errno = errsv;
-        return ret;
-    }
-    return ret;
+    return recurMkdirMode(resolved, mode);
     /**
       INITIAL_SYS(mkdir)
       INITIAL_SYS(mkdirat)

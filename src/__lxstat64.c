@@ -34,6 +34,7 @@
 
 wrapper(__lxstat64, int, (int ver, const char * filename, struct stat64 * buf))
 {
+    int errsv = errno;
     char tmp[FAKECHROOT_PATH_MAX];
     int retval;
     READLINK_TYPE_RETURN linksize;
@@ -45,6 +46,7 @@ wrapper(__lxstat64, int, (int ver, const char * filename, struct stat64 * buf))
 
     expand_chroot_path(filename);
     //here if path inside container does not exist && path inside host does not exist neither, return container info
+    errno = errsv;
     retval = nextcall(__lxstat64)(ver, filename, buf);
     if(retval != 0){
         int old_retval = retval;

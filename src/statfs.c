@@ -29,12 +29,22 @@
 # include <sys/mount.h>
 #endif
 #include "libfakechroot.h"
+#include "unionfs.h"
 
 
 wrapper(statfs, int, (const char * path, struct statfs * buf))
 {
+    int errsv = errno;
     debug("statfs(\"%s\", &buf)", path);
     expand_chroot_path(path);
+    if(lxstat(path) && is_file_type(path, TYPE_LINK)){
+        debug("statfs encounters symlink: %s, is working on resolving it", path);
+        char link[MAX_PATH];
+        iterResolveSymlink(path, link);
+        errno = errsv;
+        return nextcall(statfs)(link, buf);
+    }
+    errno = errsv;
     return nextcall(statfs)(path, buf);
 }
 

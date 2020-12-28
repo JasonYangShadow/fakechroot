@@ -33,14 +33,17 @@
 
 wrapper(stat, int, (const char * file_name, struct stat * buf))
 {
+    int errsv = errno;
     debug("stat(\"%s\", &buf)", file_name);
     expand_chroot_path(file_name);
     if(lxstat(file_name) && is_file_type(file_name, TYPE_LINK)){
         debug("stat encounters symlink: %s, is working on resolving it", file_name);
         char link[MAX_PATH];
         iterResolveSymlink(file_name, link);
+        errno = errsv;
         return nextcall(stat)(link, buf);
     }
+    errno = errsv;
     return nextcall(stat)(file_name, buf);
 }
 

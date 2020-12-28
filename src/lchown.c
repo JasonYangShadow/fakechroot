@@ -27,7 +27,9 @@
 
 wrapper(lchown, int, (const char * path, uid_t owner, gid_t group))
 {
+    int errsv = errno;
     debug("lchown(\"%s\", %d, %d)", path, owner, group);
     expand_chroot_path(path);
+    errno = errsv;
     return nextcall(lchown)(path, owner, group);
 }

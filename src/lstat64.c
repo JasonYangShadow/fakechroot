@@ -35,6 +35,7 @@
 
 wrapper(lstat64, int, (const char * file_name, struct stat64 * buf))
 {
+    int errsv = errno;
     char *fakechroot_path, fakechroot_buf[FAKECHROOT_PATH_MAX], tmp[FAKECHROOT_PATH_MAX];
     char resolved[FAKECHROOT_PATH_MAX];
     int retval;
@@ -51,6 +52,7 @@ wrapper(lstat64, int, (const char * file_name, struct stat64 * buf))
 
     orig = file_name;
     expand_chroot_path(file_name);
+    errno = errsv;
     retval = nextcall(lstat64)(file_name, buf);
     /* deal with http://bugs.debian.org/561991 */
     if ((buf->st_mode & S_IFMT) == S_IFLNK)

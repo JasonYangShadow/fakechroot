@@ -25,6 +25,7 @@
 
 wrapper(rename, int, (const char * oldpath, const char * newpath))
 {
+    int errsv = errno;
     char tmp[FAKECHROOT_PATH_MAX];
     debug("rename(\"%s\", \"%s\")", oldpath, newpath);
     expand_chroot_path(oldpath);
@@ -35,8 +36,13 @@ wrapper(rename, int, (const char * oldpath, const char * newpath))
     char** rt_paths;
     bool r = rt_mem_check("rename", 2, &rt_paths, oldpath, newpath);
     if (r && rt_paths){
+      errno = errsv;
       return nextcall(rename)(rt_paths[0], rt_paths[1]);
     }else{
-      return WRAPPER_FUFS(rename,rename, oldpath, newpath)
+      int ret = WRAPPER_FUFS(rename,rename, oldpath, newpath)
+      if(ret == 0){
+        errno = errsv;
+      }
+      return ret;
     }
 }

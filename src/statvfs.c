@@ -28,8 +28,10 @@
 
 wrapper(statvfs, int, (const char * path, struct statvfs * buf))
 {
+    int errsv = errno;
     debug("statvfs(\"%s\", &buf)", path);
     expand_chroot_path(path);
+    errno = errsv;
     return nextcall(statvfs)(path, buf);
 }
 

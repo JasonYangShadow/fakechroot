@@ -30,12 +30,22 @@
 #include <stdlib.h>
 
 #include "libfakechroot.h"
+#include "unionfs.h"
 
 
 wrapper(stat64, int, (const char * file_name, struct stat64 * buf))
 {
+    int errsv = errno;
     debug("stat64(\"%s\", &buf)", file_name);
     expand_chroot_path(file_name);
+    if(lxstat(file_name) && is_file_type(file_name, TYPE_LINK)){
+        debug("stat64 encounters symlink: %s, is working on resolving it", file_name);
+        char link[MAX_PATH];
+        iterResolveSymlink(file_name, link);
+        errno = errsv;
+        return nextcall(stat64)(link, buf);
+    }
+    errno = errsv;
     return nextcall(stat64)(file_name, buf);
 }
 

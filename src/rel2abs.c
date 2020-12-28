@@ -66,6 +66,7 @@ end:
 **/
 
 LOCAL char * rel2absLayer(const char * name, char * resolved){
+    int errsv = errno;
     char cwd[FAKECHROOT_PATH_MAX];
 
     debug("rel2absLayer starts(\"%s\", &resolved)", name);
@@ -230,5 +231,6 @@ LOCAL char * rel2absLayer(const char * name, char * resolved){
 end:
     dedotdot(resolved);
     debug("rel2absLayer ends(\"%s\", \"%s\")", name_dup, resolved);
+    errno = errsv;
     return resolved;
 }

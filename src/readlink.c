@@ -52,21 +52,23 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
             linksize = real_readlink(path, tmp, MAX_PATH -1);
             if(linksize != -1){
                 tmp[linksize] = '\0';
+                debug("/proc/self/cwd original reads %s", tmp);
 
                 char rel_path[MAX_PATH], layer_path[MAX_PATH];
                 int ret = get_relative_path_layer(tmp, rel_path, layer_path);
                 if(ret == 0){
                     strncpy(buf, "/", 1);
+                    linksize = 1;
                     if(strcmp(rel_path, ".") != 0){
                         strncpy(buf+1, rel_path, strlen(rel_path));
+                        linksize += strlen(rel_path);
                     }
-                    linksize = strlen(buf);
-                    debug("readlink processing /proc/self/cwd, result: %s, length: %d", buf, linksize);
+                    debug("readlink processing /proc/self/cwd inside container, result: %s, length: %d, rel_path: %s", buf, linksize, rel_path);
                     return linksize;
                 }else{
                     strcpy(buf, tmp);
-                    linksize = strlen(buf);
-                    debug("readlink processing /proc/self/cwd, result: %s, length: %d", buf, linksize);
+                    linksize = strlen(tmp);
+                    debug("readlink processing /proc/self/cwd outside container, result: %s, length: %d, rel_path: %s", buf, linksize, rel_path);
                     return linksize;
                 }
             }
@@ -84,7 +86,7 @@ wrapper(readlink, READLINK_TYPE_RETURN, (const char * path, char * buf, READLINK
         char exec[MAX_PATH];
         if(parse_cmd_line(pid_path, exec)){
             strcpy(buf, exec);
-            linksize = strlen(buf);
+            linksize = strlen(exec);
             debug("readlink processing /proc/self/exe, result: %s, length: %d", buf, linksize);
             return linksize;
         }

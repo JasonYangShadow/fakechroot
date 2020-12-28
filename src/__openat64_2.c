@@ -29,8 +29,10 @@
 /* Internal libc function */
 wrapper(__openat64_2, int, (int dirfd, const char * pathname, int flags))
 {
+    int errsv = errno;
     debug("__openat64_2(%d, \"%s\", %d)", dirfd, pathname, flags);
     expand_chroot_path_at(dirfd, pathname);
+    errno = errsv;
     return nextcall(__openat64_2)(dirfd, pathname, flags);
 }
 

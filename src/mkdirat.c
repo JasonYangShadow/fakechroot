@@ -31,9 +31,14 @@
 
 wrapper(mkdirat, int, (int dirfd, const char * pathname, mode_t mode))
 {
+    int errsv = errno;
     debug("mkdirat(%d, \"%s\", 0%o)", dirfd, pathname, mode);
     expand_chroot_path_at(dirfd, pathname);
-    return WRAPPER_FUFS(mkdir,mkdirat,dirfd,pathname,mode)
+    int ret = WRAPPER_FUFS(mkdir,mkdirat,dirfd,pathname,mode)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

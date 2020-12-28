@@ -30,6 +30,7 @@
 
 wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpath))
 {
+    int errsv = errno;
     debug("symlinkat starts oldpath: %s, newdirfd: %d, newpath: %s", oldpath, newdirfd, newpath);
     char old_resolved[MAX_PATH];
     /**
@@ -63,7 +64,11 @@ wrapper(symlinkat, int, (const char * oldpath, int newdirfd, const char * newpat
 
     debug("symlinkat oldpath: %s, newpath: %s, newdirfd: %d", old_resolved, new_resolved, newdirfd);
 
-    return WRAPPER_FUFS(symlink, symlinkat, old_resolved, newdirfd, new_resolved)
+    int ret = WRAPPER_FUFS(symlink, symlinkat, old_resolved, newdirfd, new_resolved)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

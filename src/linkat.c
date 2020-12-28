@@ -57,6 +57,7 @@ typedef int empty_translation_unit;
 
 wrapper(linkat, int, (int olddirfd, const char * oldpath, int newdirfd, const char * newpath, int flags))
 {
+    int errsv = errno;
     debug("linkat(%d, \"%s\", %d, \"%s\", %d)", olddirfd, oldpath, newdirfd, newpath, flags);
     char old_resolved[MAX_PATH];
     const char * container_root = getenv("ContainerRoot");
@@ -134,7 +135,11 @@ wrapper(linkat, int, (int olddirfd, const char * oldpath, int newdirfd, const ch
 
     debug("linkat oldpath: %s, newpath: %s", old_resolved, newpath);
 
-    return WRAPPER_FUFS(link, linkat, olddirfd, old_resolved, newdirfd, newpath, flags)
+    int ret = WRAPPER_FUFS(link, linkat, olddirfd, old_resolved, newdirfd, newpath, flags)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

@@ -31,6 +31,7 @@
 /* Internal libc function */
 wrapper(__open64, int, (const char * pathname, int flags, ...))
 {
+    int errsv = errno;
     int mode = 0;
 
     va_list arg;
@@ -44,6 +45,7 @@ wrapper(__open64, int, (const char * pathname, int flags, ...))
         va_end(arg);
     }
 
+    errno = errsv;
     return nextcall(__open64)(pathname, flags, mode);
 }
 

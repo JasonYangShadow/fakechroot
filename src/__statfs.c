@@ -28,8 +28,10 @@
 
 wrapper(__statfs, int, (const char * path, struct statfs * buf))
 {
+    int errsv = errno;
     debug("__statfs(\"%s\", &buf)", path);
     expand_chroot_path(path);
+    errno = errsv;
     return nextcall(__statfs)(path, buf);
 }
 

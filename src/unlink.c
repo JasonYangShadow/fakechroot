@@ -25,14 +25,20 @@
 
 wrapper(unlink, int, (const char * pathname))
 {
+    int errsv = errno;
     debug("unlink(\"%s\")", pathname);
     expand_chroot_path(pathname);
 
     char** rt_paths;
     bool r = rt_mem_check("unlink", 1, &rt_paths, pathname);
     if (r && rt_paths){
+        errno = errsv;
         return nextcall(unlink)(rt_paths[0]);
     }else {
-        return WRAPPER_FUFS(unlink,unlink,pathname)
+        int ret = WRAPPER_FUFS(unlink,unlink,pathname)
+        if(ret == 0){
+            errno = errsv;
+        }
+        return ret;
     }
 }

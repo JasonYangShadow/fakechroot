@@ -35,8 +35,10 @@
 
 wrapper(__fxstatat64, int, (int ver, int dirfd, const char * pathname, struct stat64 * buf, int flags))
 {
+    int errsv = errno;
     debug("__fxstatat64(%d, %d, \"%s\", &buf, %d)", ver, dirfd, pathname, flags);
     expand_chroot_path_at(dirfd, pathname);
+    errno = errsv;
     return nextcall(__fxstatat64)(ver, dirfd, pathname, buf, flags);
 }
 

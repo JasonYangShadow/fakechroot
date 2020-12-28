@@ -28,8 +28,10 @@
 /* Internal libc function */
 wrapper(__open_2, int, (const char * pathname, int flags))
 {
+    int errsv = errno;
     debug("__open_2(\"%s\", %d)", pathname, flags);
     expand_chroot_path(pathname);
+    errno = errsv;
     return nextcall(__open_2)(pathname, flags);
 }
 

@@ -25,7 +25,12 @@
 
 wrapper(rmdir, int, (const char * pathname))
 {
+    int errsv = errno;
     debug("rmdir(\"%s\")", pathname);
     expand_chroot_path(pathname);
-    return WRAPPER_FUFS(rmdir,rmdir,pathname)
+    int ret = WRAPPER_FUFS(rmdir,rmdir,pathname)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }

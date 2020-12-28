@@ -30,9 +30,14 @@
 
 wrapper(fchmodat, int, (int dirfd, const char * path, mode_t mode, int flag))
 {
+    int errsv = errno;
     debug("fchmodat(%d, \"%s\", 0%o, %d)", dirfd, path, mode, flag);
     expand_chroot_path_at(dirfd, path);
-    return WRAPPER_FUFS(chmod, fchmodat, dirfd, path, mode, flag)
+    int ret = WRAPPER_FUFS(chmod, fchmodat, dirfd, path, mode, flag)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

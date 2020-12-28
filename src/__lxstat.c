@@ -36,12 +36,14 @@
 
 wrapper(__lxstat, int, (int ver, const char * filename, struct stat * buf))
 {
+    int errsv = errno;
     char tmp[FAKECHROOT_PATH_MAX];
     int retval;
     READLINK_TYPE_RETURN linksize;
     
     debug("__lxstat(%d, \"%s\", &buf)", ver,filename);
     expand_chroot_path(filename);
+    errno = errsv;
     retval = nextcall(__lxstat)(ver, filename, buf);
     //original bug fix but have to be changed in our case
     //if target is symlink have to modify the link size

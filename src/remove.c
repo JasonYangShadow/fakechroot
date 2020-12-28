@@ -25,7 +25,9 @@
 
 wrapper(remove, int, (const char * pathname))
 {
+    int errsv = errno;
     debug("remove(\"%s\")", pathname);
     expand_chroot_path(pathname);
+    errno = errsv;
     return nextcall(remove)(pathname);
 }

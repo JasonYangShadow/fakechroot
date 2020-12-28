@@ -25,12 +25,15 @@
 #define _LARGEFILE64_SOURCE
 #include <sys/statvfs.h>
 #include "libfakechroot.h"
+#include "unionfs.h"
 
 
 wrapper(statvfs64, int, (const char * path, struct statvfs64 * buf))
 {
+    int errsv = errno;
     debug("statvfs64(\"%s\", &buf)", path);
     expand_chroot_path(path);
+    errno = errsv;
     return nextcall(statvfs64)(path, buf);
 }
 

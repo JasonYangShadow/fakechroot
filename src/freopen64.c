@@ -29,9 +29,14 @@
 
 wrapper(freopen64, FILE *, (const char *path, const char *mode, FILE *stream))
 {
+    int errsv = errno;
     debug("freopen64(\"%s\", \"%s\", &stream)", path, mode);
     expand_chroot_path(path);
-    return WRAPPER_FUFS(fopen,freopen64,path,mode,stream)
+    FILE* ret = WRAPPER_FUFS(fopen,freopen64,path,mode,stream)
+    if(ret != NULL){
+        errno = errsv;
+    }
+    return ret;
 }
 
 #else

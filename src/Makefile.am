@@ -198,7 +198,9 @@ libfakechroot_la_SOURCES = \
 	fchdir.c \
 	closedir.c \
 	util.h	\
-	util.c
+	util.c \
+    filecache_client.h \
+    filecache_client.c 
 libfakechroot_la_LDFLAGS = -avoid-version
 
 AM_CFLAGS = $(EXTRA_CFLAGS)

@@ -25,12 +25,22 @@
 #define _LARGEFILE64_SOURCE
 #include <sys/statfs.h>
 #include "libfakechroot.h"
+#include "unionfs.h"
 
 
 wrapper(statfs64, int, (const char * path, struct statfs64 * buf))
 {
+    int errsv = errno;
     debug("statfs64(\"%s\", &buf)", path);
     expand_chroot_path(path);
+    if(lxstat(path) && is_file_type(path, TYPE_LINK)){
+        debug("statfs64 encounters symlink: %s, is working on resolving it", path);
+        char link[MAX_PATH];
+        iterResolveSymlink(path, link);
+        errno = errsv;
+        return nextcall(statfs64)(link, buf);
+    }
+    errno = errsv;
     return nextcall(statfs64)(path, buf);
 }
 

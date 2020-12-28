@@ -34,8 +34,10 @@
 
 wrapper(__fxstatat, int, (int ver, int dirfd, const char * pathname, struct stat * buf, int flags))
 {
+    int errsv = errno;
     debug("__fxstatat(%d, %d, \"%s\", &buf, %d)", ver, dirfd, pathname, flags);
     expand_chroot_path_at(dirfd, pathname);
+    errno = errsv;
     return nextcall(__fxstatat)(ver, dirfd, pathname, buf, flags);
 }
 

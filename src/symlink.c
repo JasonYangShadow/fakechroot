@@ -27,6 +27,7 @@
 
 wrapper(symlink, int, (const char * oldpath, const char * newpath))
 {
+    int errsv = errno;
     char old_resolved[MAX_PATH];
     /**
     if(*oldpath == '/'){
@@ -61,5 +62,9 @@ wrapper(symlink, int, (const char * oldpath, const char * newpath))
 
     debug("symlink oldpath: %s, newpath: %s", old_resolved, new_resolved);
 
-    return WRAPPER_FUFS(symlink, symlink, old_resolved, new_resolved)
+    int ret = WRAPPER_FUFS(symlink, symlink, old_resolved, new_resolved)
+    if(ret == 0){
+        errno = errsv;
+    }
+    return ret;
 }

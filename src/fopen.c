@@ -26,7 +26,12 @@
 
 wrapper(fopen, FILE *, (const char * path, const char * mode))
 {
+    int errsv = errno;
     debug("fopen(\"%s\", \"%s\")", path, mode);
     expand_chroot_path(path);
-    return WRAPPER_FUFS(fopen,fopen,path,mode)
+    FILE* ret = WRAPPER_FUFS(fopen,fopen,path,mode)
+    if(ret != NULL){
+        errno = errsv;
+    }
+    return ret;
 }

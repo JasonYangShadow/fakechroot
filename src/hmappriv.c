@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "log.h"
 #include "memcached_client.h"
+#include "filecache_client.h"
 #include "unionfs.h"
 
 bool get_process_info(struct ProcessInfo* pinfo){
@@ -33,7 +34,15 @@ bool rt_mem_exec_map(const char* path, char** n_path){
         return false;
     }
     char * containerid = getenv("ContainerId");
-    if(containerid){
+    char * configpath = getenv("ContainerConfigPath");
+    if(containerid && configpath){
+        log_debug("start checking exec from local file, containerid: %s, path: %s", containerid, path);
+        char fcvalue[FCMAX_PATH];
+        if(getFCValue(path, fcvalue) && fcvalue && *fcvalue){
+            strcpy(*n_path, fcvalue);
+            return true;
+        }
+
         log_debug("start checking exec from remote memcahced, containerid: %s, path: %s", containerid, path);
         char key[MEMCACHED_MAX_KEY];
         //key format: exec:container_id:program path:path
