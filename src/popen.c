@@ -69,6 +69,7 @@ static void *pidlist_lock = NULL;
 FILE *
 popen(const char *program, const char *type)
 {
+        int errsv = errno;
         struct pid * volatile cur;
         FILE *iop;
         int pdes[2];
@@ -153,6 +154,7 @@ popen(const char *program, const char *type)
         pidlist = cur;
         _MUTEX_UNLOCK(&pidlist_lock);
 
+        errno = errsv;
         return (iop);
 }
 
@@ -164,6 +166,7 @@ popen(const char *program, const char *type)
 int
 pclose(FILE *iop)
 {
+        int errsv = errno;
         struct pid *cur, *last;
         int pstat;
         pid_t pid;
@@ -196,6 +199,7 @@ pclose(FILE *iop)
 
         free(cur);
 
+        errno = errsv;
         return (pid == -1 ? -1 : pstat);
 }
 
