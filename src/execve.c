@@ -269,7 +269,7 @@ exe_excute:
 
             //starts initialize menvp
             //we need to add another 3 environment variables (container id & contaienr root path && pwd) ,the other one is for NULL
-            char ** menvp = malloc(sizeof(char *)*(menvcount+4));
+            char ** menvp = malloc(sizeof(char *)*(menvcount+5));
             memset(line, '\0', FAKECHROOT_PATH_MAX);
             while(fgets(line, FAKECHROOT_PATH_MAX, fp)){
                 if(line[strlen(line) - 1] == '\n'){
@@ -284,6 +284,7 @@ exe_excute:
 
             //here we add two additional env vars
             const char * container_id = getenv("ContainerId");
+            const char * lpmx_exe = getenv("LPMX_EXECUTABLE");
             const char * container_root = getenv("ContainerRoot");
             char container_cwd[FAKECHROOT_PATH_MAX];
             if(!getcwd(container_cwd, FAKECHROOT_PATH_MAX)){
@@ -293,6 +294,11 @@ exe_excute:
             menvp[menvppos] = malloc(strlen(container_id) + 13);
             strcpy(menvp[menvppos], "ContainerId=");
             strcat(menvp[menvppos], container_id);
+            menvppos++;
+
+            menvp[menvppos] = malloc(strlen(lpmx_exe) + 9);
+            strcpy(menvp[menvppos], "LPMXEXE=");
+            strcat(menvp[menvppos], lpmx_exe);
             menvppos++;
 
             menvp[menvppos] = malloc(strlen(container_root) + 15);
